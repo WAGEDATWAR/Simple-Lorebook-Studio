@@ -69,63 +69,80 @@
     </header>
 
     <div class="workspace">
-      <aside class="sidebar" aria-label="Library">
-        <div class="sidebar-top">
-          <div class="book-section">
-            <div class="section-label" id="book-label">Lorebook</div>
-            <div class="book-controls">
-              <select id="book-select" class="book-select" aria-labelledby="book-label"></select>
-              <button id="new-book-btn" class="icon-btn" type="button" title="New lorebook" aria-label="New lorebook">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-                  <path d="M12 5v14"/><path d="M5 12h14"/>
-                </svg>
-              </button>
-              <button id="delete-book-btn" class="icon-btn danger" type="button" title="Delete lorebook" aria-label="Delete lorebook">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
-                </svg>
-              </button>
-            </div>
-            <details id="book-description-details" class="book-description">
-              <summary>
-                <span class="section-label">Description</span>
-                <span id="book-description-preview" class="book-description-preview">Add a description</span>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
-              </summary>
-              <label class="sr-only" for="book-description">Lorebook description</label>
-              <textarea id="book-description" class="book-description-input" rows="3" placeholder="Optional notes about this lorebook."></textarea>
-            </details>
-          </div>
-
-          <div class="search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>
+      <aside id="sidebar" class="sidebar" aria-label="Library">
+        <div class="sidebar-head">
+          <span class="section-label">Library</span>
+          <button id="sidebar-toggle" class="icon-btn sidebar-toggle" type="button" aria-label="Collapse library sidebar" aria-controls="sidebar-content" aria-expanded="true" title="Collapse library sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 6-6 6 6 6"/>
             </svg>
-            <label class="sr-only" for="entry-search">Search entries</label>
-            <input id="entry-search" type="search" placeholder="Search entries" autocomplete="off" spellcheck="false">
-            <kbd aria-hidden="true">/</kbd>
-          </div>
+          </button>
         </div>
 
-        <div class="entry-list-head">
-          <div class="entry-list-heading">
-            <span class="section-label">Entries</span>
-            <span id="entry-count" class="count" aria-live="polite">0</span>
+        <div id="sidebar-content" class="sidebar-content">
+          <div class="sidebar-top">
+            <section class="book-section" aria-labelledby="book-label">
+              <div class="section-label" id="book-label">Lorebook</div>
+              <div class="book-controls">
+                <select id="book-select" class="book-select" aria-labelledby="book-label"></select>
+                <button id="new-book-btn" class="icon-btn" type="button" title="New lorebook" aria-label="New lorebook">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14"/><path d="M5 12h14"/>
+                  </svg>
+                </button>
+                <button id="delete-book-btn" class="icon-btn danger" type="button" title="Delete lorebook" aria-label="Delete lorebook">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
+                  </svg>
+                </button>
+              </div>
+            </section>
+
+            <section class="book-meta" aria-labelledby="book-meta-label">
+              <div class="section-label" id="book-meta-label">Lorebook info</div>
+              <details id="book-description-details" class="book-description">
+                <summary>
+                  <span class="section-label">Description</span>
+                  <span id="book-description-preview" class="book-description-preview">Add a description</span>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="m6 9 6 6 6-6"/>
+                  </svg>
+                </summary>
+                <label class="sr-only" for="book-description">Lorebook description</label>
+                <textarea id="book-description" class="book-description-input" rows="3" placeholder="Optional notes about this lorebook."></textarea>
+              </details>
+              <div class="book-meta-actions">
+                <button id="overview-btn" class="meta-btn overview-btn" type="button" aria-label="Lorebook overview" title="Lorebook overview">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+                  </svg>
+                  <span>Overview</span>
+                </button>
+                <button id="validation-btn" class="meta-btn validation-btn" type="button" title="No validation issues" aria-label="No validation issues">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3 3.2 20h17.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/>
+                  </svg>
+                  <span>Issues</span>
+                  <span id="validation-count" class="validation-count" aria-hidden="true">0</span>
+                </button>
+              </div>
+            </section>
+
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>
+              </svg>
+              <label class="sr-only" for="entry-search">Search entries</label>
+              <input id="entry-search" type="search" placeholder="Search entries" autocomplete="off" spellcheck="false">
+              <kbd aria-hidden="true">/</kbd>
+            </div>
           </div>
-          <div class="entry-list-tools">
-            <button id="overview-btn" class="overview-btn" type="button" aria-label="Lorebook overview" title="Lorebook overview">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
-              </svg>
-            </button>
-            <button id="validation-btn" class="validation-btn" type="button" title="No validation issues" aria-label="No validation issues">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3 3.2 20h17.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/>
-              </svg>
-              <span id="validation-count" class="validation-count" aria-hidden="true">0</span>
-            </button>
+
+          <div class="entry-list-head">
+            <div class="entry-list-heading">
+              <span class="section-label">Entries</span>
+              <span id="entry-count" class="count" aria-live="polite">0</span>
+            </div>
             <label class="sort-control">
               <span class="sr-only">Sort entries</span>
               <select id="entry-sort" class="sort-select" title="Sort entries">
@@ -137,33 +154,33 @@
               </select>
             </label>
           </div>
-        </div>
 
-        <div id="entry-list" class="entry-list" role="listbox" aria-label="Entries" aria-multiselectable="true" tabindex="-1"></div>
+          <div id="entry-list" class="entry-list" role="listbox" aria-label="Entries" aria-multiselectable="true" tabindex="-1"></div>
 
-        <div id="bulk-bar" class="bulk-bar" aria-live="polite" hidden>
-          <span id="bulk-count" class="bulk-count">0 selected</span>
-          <div class="bulk-actions">
-            <button id="bulk-enable-btn" class="icon-btn" type="button" title="Enable selected entries" aria-label="Enable selected entries">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.4 2.4 4.6-5"/>
-              </svg>
-            </button>
-            <button id="bulk-disable-btn" class="icon-btn" type="button" title="Disable selected entries" aria-label="Disable selected entries">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5"/><path d="m6.5 6.5 11 11"/>
-              </svg>
-            </button>
-            <button id="bulk-delete-btn" class="icon-btn danger" type="button" title="Delete selected entries" aria-label="Delete selected entries">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
-              </svg>
-            </button>
-            <button id="bulk-clear-btn" class="icon-btn" type="button" title="Clear selection" aria-label="Clear selection">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-                <path d="m6 6 12 12"/><path d="M18 6 6 18"/>
-              </svg>
-            </button>
+          <div id="bulk-bar" class="bulk-bar" aria-live="polite" hidden>
+            <span id="bulk-count" class="bulk-count">0 selected</span>
+            <div class="bulk-actions">
+              <button id="bulk-enable-btn" class="icon-btn" type="button" title="Enable selected entries" aria-label="Enable selected entries">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.4 2.4 4.6-5"/>
+                </svg>
+              </button>
+              <button id="bulk-disable-btn" class="icon-btn" type="button" title="Disable selected entries" aria-label="Disable selected entries">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.5"/><path d="m6.5 6.5 11 11"/>
+                </svg>
+              </button>
+              <button id="bulk-delete-btn" class="icon-btn danger" type="button" title="Delete selected entries" aria-label="Delete selected entries">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
+                </svg>
+              </button>
+              <button id="bulk-clear-btn" class="icon-btn" type="button" title="Clear selection" aria-label="Clear selection">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                  <path d="m6 6 12 12"/><path d="M18 6 6 18"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -182,6 +199,8 @@
             <span>From template</span>
           </button>
         </div>
+
+        <div id="sidebar-resizer" class="sidebar-resizer" role="separator" aria-label="Resize library sidebar" aria-orientation="vertical" tabindex="0" title="Drag to resize. Double-click to reset."></div>
       </aside>
 
       <main class="editor" aria-label="Entry editor">

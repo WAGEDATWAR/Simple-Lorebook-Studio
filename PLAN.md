@@ -33,6 +33,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - One local project containing multiple lorebooks.
 - Lorebook create, rename, switch, and delete.
 - Editable book descriptions stored with each lorebook and previewed in the sidebar.
+- Lorebook information section with the description, overview, and validation controls above entry search.
 - Book-level validation for empty content, repeated or overlapping keys, missing keys on non-constant entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
@@ -57,6 +58,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Destructive actions behind a styled confirmation dialog.
 - Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
 - Responsive layout with a stacked sidebar/editor arrangement on narrow screens.
+- Auto-sized library sidebar with a 200-460 px drag/keyboard resize range, wrapped controls, and a collapsible 50 px rail. Width and collapse state persist locally.
 - Sample "Aurora Vale" project so the interface is meaningful on first run.
 
 ### Known gaps
@@ -341,9 +343,11 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Destructive actions require confirmation; ordinary actions do not.
 - Import confirmation is a preview with format, counts, and warnings. It creates a pre-import backup before replacement and leaves backup restore one click away in the export dialog.
 - The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
-- Book descriptions live in a collapsible sidebar control with a one-line preview.
-- The entry-list warning control summarizes validation issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
+- Book descriptions live in a collapsible lorebook-information section with a one-line preview.
+- The lorebook-information section also exposes the overview and validation controls, keeping entry count and sorting separate.
+- The validation control summarizes issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
 - The overview control summarizes entry counts, token estimates, key coverage, and the longest entry for the active book.
+- The library sidebar auto-fits its control rows, wraps at narrower widths, resizes by drag or keyboard, resets to auto-fit on double-click, and collapses to a 50 px rail.
 - A template picker starts a new entry from a built-in character, location, faction, item, or event structure.
 - The history control lists local snapshots with reasons and counts. Users can save a snapshot or restore one after confirmation; the current state is snapshotted first.
 - The active entry is visually anchored and mirrored in the editor.
@@ -367,10 +371,11 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 
 ### Responsive behavior
 
-- Above 1000 px: 312 px library plus fluid editor.
-- 1000 px and below: narrower library, two-column settings.
+- Above 780 px: auto-fitted 200-460 px library plus fluid editor; page and sidebar controls never overflow horizontally.
+- 780 px and below: stacked library (minimum 360 px or 42 vh) above the editor, with internally scrolling library content, a compact header, a two-up footer, and labels retained for screen readers.
+- Collapsing the library uses a 50 px rail at every width; on stacked layouts it reduces the library row to 50 px.
+- 1000 px and below: two-column settings.
 - 900 px and below: compact topbar, brand text hidden.
-- 780 px and below: stacked sidebar (40 vh) above editor.
 - 600 px and below: single-column fields, compact icon-only import/export.
 - 430 px and below: save label hidden in the topbar, compact dialog padding, and hidden export-format meta pills.
 
@@ -426,7 +431,8 @@ Current checks:
 - The static server returns correct module content types.
 - Headless Chrome verified the export, validation, history, overview, and template dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
 - Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, jump-to-entry, automatic and manual snapshots, restore with a pre-restore snapshot, notes persistence, the overview metrics, and template creation.
-- Visual review covered the export dialog, validation dialog, import preview, backup metadata, overview, template picker, mobile dialog layout, focus, contrast, and empty space.
+- Browser checks covered automatic library width, 200 px and 460 px resize bounds, keyboard resizing, double-click auto-fit reset, wrapped controls, persisted width and collapse state, viewport changes, and 1440/390/320 px layouts with no horizontal overflow.
+- Visual review covered the export dialog, validation dialog, import preview, backup metadata, overview, template picker, mobile dialog layout, resized and wrapped library sidebar, focus, contrast, and empty space.
 
 Planned checks:
 

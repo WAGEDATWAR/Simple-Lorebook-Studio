@@ -55,6 +55,11 @@ import { clamp } from "./utils.js";
 import { VALIDATION_LABELS, validateBook } from "./validation.js";
 
 const refs = {
+  workspace: document.querySelector(".workspace"),
+  sidebar: document.querySelector("#sidebar"),
+  sidebarContent: document.querySelector("#sidebar-content"),
+  sidebarToggle: document.querySelector("#sidebar-toggle"),
+  sidebarResizer: document.querySelector("#sidebar-resizer"),
   bookName: document.querySelector("#book-name"),
   bookDescription: document.querySelector("#book-description"),
   bookDescriptionPreview: document.querySelector("#book-description-preview"),
@@ -151,13 +156,21 @@ let saveFailed = false;
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
+const SIDEBAR_STATE_KEY = "lorebook-studio:sidebar-collapsed:v1";
+const SIDEBAR_WIDTH_KEY = "lorebook-studio:sidebar-width:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
 const AUTO_REVISION_INTERVAL_MS = 5 * 60 * 1000;
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 460;
+const SIDEBAR_RESIZE_STEP = 16;
 
 let draggedEntryId = null;
 let dropTargetId = null;
 let dropPlace = "before";
+let sidebarWidth = 0;
+let sidebarWidthMode = "auto";
+let sidebarDrag = null;
 
 function readSortMode() {
   try {
@@ -198,6 +211,150 @@ function setDetailsCollapsed(collapsed, persist = true) {
     } catch {
       return;
     }
+  }
+}
+
+function readSidebarState() {
+  try {
+    const value = localStorage.getItem(SIDEBAR_STATE_KEY);
+    return value === null ? null : value === "1";
+  } catch {
+    return null;
+  }
+}
+
+function readSidebarWidth() {
+  try {
+    const value = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistSidebarWidth(width) {
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(width));
+  } catch {
+    return;
+  }
+}
+
+function getSidebarMaxWidth() {
+  return Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, window.innerWidth - 360));
+}
+
+function applySidebarWidth(width, persist = false) {
+  const next = Math.round(clamp(width, SIDEBAR_MIN_WIDTH, getSidebarMaxWidth()));
+  sidebarWidth = next;
+  refs.workspace.style.setProperty("--sidebar-width", `${next}px`);
+  refs.sidebarResizer.setAttribute("aria-valuemin", String(SIDEBAR_MIN_WIDTH));
+  refs.sidebarResizer.setAttribute("aria-valuemax", String(getSidebarMaxWidth()));
+  refs.sidebarResizer.setAttribute("aria-valuenow", String(next));
+
+  if (persist) {
+    sidebarWidthMode = "manual";
+    persistSidebarWidth(next);
+  }
+
+  return next;
+}
+
+function measureSidebarContentWidth() {
+  const probe = document.createElement("div");
+  const content = document.createElement("div");
+  probe.className = "sidebar sidebar-probe";
+  probe.setAttribute("aria-hidden", "true");
+  content.className = "sidebar-content";
+
+  for (const selector of [".sidebar-top", ".entry-list-head", ".sidebar-footer"]) {
+    const source = refs.sidebar.querySelector(selector);
+
+    if (!source) {
+      continue;
+    }
+
+    const clone = source.cloneNode(true);
+    clone.querySelectorAll("[id]").forEach((element) => element.removeAttribute("id"));
+    content.append(clone);
+  }
+
+  const preview = content.querySelector(".book-description-preview");
+  const bookControls = content.querySelector(".book-controls");
+  const bookMetaActions = content.querySelector(".book-meta-actions");
+
+  if (preview) {
+    preview.textContent = "Description preview";
+  }
+
+  if (bookControls) {
+    bookControls.style.flexWrap = "nowrap";
+  }
+
+  if (bookMetaActions) {
+    bookMetaActions.style.flexWrap = "nowrap";
+  }
+
+  probe.append(content);
+  document.body.append(probe);
+
+  const width = probe.getBoundingClientRect().width;
+  probe.remove();
+  return width;
+}
+
+function applyAutomaticSidebarWidth() {
+  sidebarWidthMode = "auto";
+
+  try {
+    localStorage.removeItem(SIDEBAR_WIDTH_KEY);
+  } catch {
+    return applySidebarWidth(measureSidebarContentWidth());
+  }
+
+  applySidebarWidth(measureSidebarContentWidth());
+}
+
+function syncSidebarWidthToViewport() {
+  if (sidebarDrag) {
+    return;
+  }
+
+  applySidebarWidth(sidebarWidthMode === "auto" ? measureSidebarContentWidth() : readSidebarWidth() ?? sidebarWidth);
+}
+
+function setSidebarCollapsed(collapsed, persist = true) {
+  refs.sidebar.classList.toggle("is-collapsed", collapsed);
+  refs.workspace.classList.toggle("is-sidebar-collapsed", collapsed);
+  refs.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+  refs.sidebarResizer.hidden = collapsed;
+
+  const label = collapsed ? "Expand library sidebar" : "Collapse library sidebar";
+  refs.sidebarToggle.setAttribute("aria-label", label);
+  refs.sidebarToggle.title = label;
+
+  if (persist) {
+    try {
+      localStorage.setItem(SIDEBAR_STATE_KEY, collapsed ? "1" : "0");
+    } catch {
+      return;
+    }
+  }
+}
+
+function finishSidebarResize() {
+  if (!sidebarDrag) {
+    return;
+  }
+
+  const moved = sidebarDrag.moved;
+  sidebarDrag = null;
+  refs.workspace.classList.remove("is-resizing-sidebar");
+  document.body.classList.remove("is-resizing-sidebar");
+
+  if (moved) {
+    sidebarWidthMode = "manual";
+    persistSidebarWidth(sidebarWidth);
   }
 }
 
@@ -1446,6 +1603,74 @@ refs.detailsToggle.addEventListener("click", () => {
   setDetailsCollapsed(!refs.detailsPanel.classList.contains("is-collapsed"));
 });
 
+refs.sidebarToggle.addEventListener("click", () => {
+  setSidebarCollapsed(!refs.sidebar.classList.contains("is-collapsed"));
+});
+
+refs.sidebarResizer.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || refs.sidebar.classList.contains("is-collapsed")) {
+    return;
+  }
+
+  sidebarDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startWidth: refs.sidebar.getBoundingClientRect().width,
+    moved: false
+  };
+  refs.sidebarResizer.setPointerCapture(event.pointerId);
+  refs.workspace.classList.add("is-resizing-sidebar");
+  document.body.classList.add("is-resizing-sidebar");
+  event.preventDefault();
+});
+
+refs.sidebarResizer.addEventListener("pointermove", (event) => {
+  if (!sidebarDrag || event.pointerId !== sidebarDrag.pointerId) {
+    return;
+  }
+
+  const delta = event.clientX - sidebarDrag.startX;
+
+  if (delta !== 0) {
+    sidebarDrag.moved = true;
+  }
+
+  applySidebarWidth(sidebarDrag.startWidth + delta);
+});
+
+refs.sidebarResizer.addEventListener("pointerup", finishSidebarResize);
+refs.sidebarResizer.addEventListener("pointercancel", finishSidebarResize);
+refs.sidebarResizer.addEventListener("lostpointercapture", finishSidebarResize);
+
+refs.sidebarResizer.addEventListener("keydown", (event) => {
+  let next = null;
+
+  if (event.key === "ArrowLeft") {
+    next = sidebarWidth - (event.shiftKey ? SIDEBAR_RESIZE_STEP * 2 : SIDEBAR_RESIZE_STEP);
+  } else if (event.key === "ArrowRight") {
+    next = sidebarWidth + (event.shiftKey ? SIDEBAR_RESIZE_STEP * 2 : SIDEBAR_RESIZE_STEP);
+  } else if (event.key === "Home") {
+    next = SIDEBAR_MIN_WIDTH;
+  } else if (event.key === "End") {
+    next = getSidebarMaxWidth();
+  }
+
+  if (next === null) {
+    return;
+  }
+
+  event.preventDefault();
+  sidebarWidthMode = "manual";
+  applySidebarWidth(next, true);
+});
+
+refs.sidebarResizer.addEventListener("dblclick", (event) => {
+  event.preventDefault();
+  applyAutomaticSidebarWidth();
+});
+
+window.addEventListener("resize", syncSidebarWidthToViewport);
+
 refs.importBtn.addEventListener("click", () => {
   refs.importInput.click();
 });
@@ -1590,6 +1815,9 @@ document.addEventListener("visibilitychange", () => {
 const storedDetailsState = readDetailsState();
 setDetailsCollapsed(storedDetailsState ?? window.matchMedia("(max-width: 720px)").matches, false);
 
+const storedSidebarState = readSidebarState();
+setSidebarCollapsed(storedSidebarState ?? false, false);
+
 initStore(loadProject());
 
 const initialSortMode = readSortMode();
@@ -1599,6 +1827,15 @@ if (initialSortMode) {
 }
 
 renderAll();
+
+const storedSidebarWidth = readSidebarWidth();
+
+if (storedSidebarWidth === null) {
+  applyAutomaticSidebarWidth();
+} else {
+  sidebarWidthMode = "manual";
+  applySidebarWidth(storedSidebarWidth);
+}
 
 if (saveProject(getState())) {
   setSaveState("saved");

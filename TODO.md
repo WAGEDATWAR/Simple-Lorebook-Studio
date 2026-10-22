@@ -106,7 +106,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 ## UI, UX, and Accessibility
 
-- [x] [P1] Add collapsible or resizable panes and remember the chosen layout.
+- [x] [P1] Add auto-sized, resizable, and collapsible library and entry-detail sidebars with remembered layouts and wrapping controls.
 - [ ] [P1] Add a mobile library drawer instead of the fixed stacked sidebar if authoring on phones becomes common.
 - [ ] [P1] Run an automated accessibility audit and fix all critical issues.
 - [ ] [P1] Verify focus restoration after delete, book switch, and dialog dismissal.
