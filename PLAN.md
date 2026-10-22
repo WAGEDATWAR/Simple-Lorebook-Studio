@@ -45,9 +45,11 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Native project JSON import and full-project backup export.
 - Single-book export to native, SillyTavern World Info v2, and Chub JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
-- Import preview with detected format, file name, book and entry counts, and adapter warnings.
+- Import preview with detected format, file name, book and entry counts, adapter warnings, and a diff of added, removed, and changed books and entries.
+- Import merge strategies: replace the project, append imported entries to lorebooks matched by name, or merge entries matched by title.
 - Automatic pre-import backup with saved backup metadata and one-click restore.
 - Local revision history with manual snapshots, automatic snapshots, and restore. The newest 12 snapshots are retained within a local size budget.
+- Revision history comparison with per-snapshot change counts and a diff against the previous snapshot, including line-level content changes.
 - Collision-free numeric UID allocation on export and duplicate source UID remapping on import.
 - Imported unknown book and entry fields preserved per source format and restored only when exporting back to that format.
 - Session undo/redo for edits, structural changes, bulk actions, reordering, duplication, project replacement, import, and backup restore.
@@ -341,7 +343,9 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 
 - Autosave is the default; the header communicates Saving, Saved, or Unsaved.
 - Destructive actions require confirmation; ordinary actions do not.
-- Import confirmation is a preview with format, counts, and warnings. It creates a pre-import backup before replacement and leaves backup restore one click away in the export dialog.
+- Import confirmation is a diff review with format, counts, warnings, an import strategy control, and added, removed, or changed books and entries. It creates a pre-import backup before applying and leaves backup restore one click away in the export dialog.
+- Import strategies are replace, append to matching lorebooks by name, and merge by title. The diff and confirm label update live when the strategy changes.
+- Diff reviews summarize changes, list affected entries, and expand the first changed entry. Content and description changes use unified line diffs.
 - The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
 - Book descriptions live in a collapsible lorebook-information section with a one-line preview.
 - The lorebook-information section also exposes the overview and validation controls, keeping entry count and sorting separate.
@@ -349,7 +353,7 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - The overview control summarizes entry counts, token estimates, key coverage, and the longest entry for the active book.
 - The library sidebar auto-fits its control rows, wraps at narrower widths, resizes by drag or keyboard, resets to auto-fit on double-click, and collapses to a 50 px rail.
 - A template picker starts a new entry from a built-in character, location, faction, item, or event structure.
-- The history control lists local snapshots with reasons and counts. Users can save a snapshot or restore one after confirmation; the current state is snapshotted first.
+- The history control lists local snapshots with reasons, counts, and compact change counts. Users can compare a snapshot with the previous one, save a snapshot, or restore one after confirmation; the current state is snapshotted before a restore.
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering.
@@ -397,7 +401,7 @@ Exit criteria: a 100-entry book can be maintained without leaving the keyboard, 
 
 ### Phase 2 - Interoperability
 
-Completed: adapter contract with capabilities, SillyTavern World Info import/export, Chub import/export, `lorebook_v3` character-book import, collision-free UID export, import preview, field-level warnings, pre-import backup/restore, round-trip fixtures, and single-book/project export choices.
+Completed: adapter contract with capabilities, SillyTavern World Info import/export, Chub import/export, `lorebook_v3` character-book import, collision-free UID export, import preview with replace/append/merge-by-title strategies, field-level warnings, pre-import backup/restore, round-trip fixtures, and single-book/project export choices.
 
 Remaining: standalone character-book export, character card containers, broader Chub wrapper coverage, and merge strategies.
 
@@ -426,13 +430,14 @@ Exit criteria: a new user can create and export their first lorebook without ext
 Current checks:
 
 - `npm run check` validates every JavaScript module syntactically.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, revision snapshots, history, description edits, duplication, selection, bulk actions, reordering, sorting, overview metrics, templates, schema normalization, and validation. The suite currently passes 47 tests.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, overview metrics, templates, schema normalization, and validation. The suite currently passes 61 tests.
 - GitHub Actions runs `npm run check` and `npm test` on pushes to `main` and pull requests.
 - The static server returns correct module content types.
 - Headless Chrome verified the export, validation, history, overview, and template dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
 - Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, jump-to-entry, automatic and manual snapshots, restore with a pre-restore snapshot, notes persistence, the overview metrics, and template creation.
 - Browser checks covered automatic library width, 200 px and 460 px resize bounds, keyboard resizing, double-click auto-fit reset, wrapped controls, persisted width and collapse state, viewport changes, and 1440/390/320 px layouts with no horizontal overflow.
-- Visual review covered the export dialog, validation dialog, import preview, backup metadata, overview, template picker, mobile dialog layout, resized and wrapped library sidebar, focus, contrast, and empty space.
+- Browser checks covered import replacement, append, and merge-by-title strategies, live strategy switching and diff refresh, import diff review, revision compare counts and dialogs, expanded line changes, nested history/diff dialogs, cancellation, and 1440/390/320 px layouts with no horizontal overflow.
+- Visual review covered the export dialog, validation dialog, import strategy control and diff, revision diff, narrow history actions, backup metadata, overview, template picker, mobile dialog layout, resized and wrapped library sidebar, focus, contrast, and empty space.
 
 Planned checks:
 

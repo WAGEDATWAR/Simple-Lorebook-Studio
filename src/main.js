@@ -46,8 +46,11 @@ import {
   saveProjectBackup,
   saveRevision
 } from "./storage.js";
+import { diffProjects } from "./diff.js";
+import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
+import { showDiffDialog } from "./ui/diff.js";
 import { renderEditor, syncEntryStats } from "./ui/editor.js";
 import { confirmAction, toast } from "./ui/overlays.js";
 import { renderSidebar } from "./ui/sidebar.js";
@@ -651,6 +654,88 @@ function maybeSaveRevision() {
   }
 }
 
+function getRevisionComparison(id) {
+  const revisions = getRevisions().revisions;
+  const index = revisions.findIndex((revision) => revision.id === id);
+
+  if (index < 0) {
+    return { ok: false, error: "That revision is no longer available." };
+  }
+
+  const revision = revisions[index];
+  const current = loadRevision(id);
+
+  if (!current.ok) {
+    return current;
+  }
+
+  const previousRevision = revisions[index + 1] ?? null;
+  let previousProject = { books: [] };
+
+  if (previousRevision) {
+    const previous = loadRevision(previousRevision.id);
+
+    if (!previous.ok) {
+      return previous;
+    }
+
+    previousProject = previous.project;
+  }
+
+  return {
+    ok: true,
+    revision,
+    previousRevision,
+    diff: diffProjects(previousProject, current.project),
+    project: current.project
+  };
+}
+
+function renderRevisionDelta(diff) {
+  const { summary } = diff;
+  const additions = summary.booksAdded + summary.entriesAdded;
+  const removals = summary.booksRemoved + summary.entriesRemoved;
+  const changes = summary.booksMetadataChanged + summary.entriesChanged;
+  const delta = document.createElement("span");
+  const parts = [];
+
+  delta.className = "history-item-delta";
+
+  if (!additions && !removals && !changes) {
+    delta.classList.add("is-empty");
+    delta.textContent = "No changes";
+    return delta;
+  }
+
+  if (additions) {
+    parts.push(`${additions} added`);
+    const chip = document.createElement("span");
+    chip.className = "history-delta-add";
+    chip.textContent = `+${additions}`;
+    delta.append(chip);
+  }
+
+  if (removals) {
+    parts.push(`${removals} removed`);
+    const chip = document.createElement("span");
+    chip.className = "history-delta-remove";
+    chip.textContent = `-${removals}`;
+    delta.append(chip);
+  }
+
+  if (changes) {
+    parts.push(`${changes} changed`);
+    const chip = document.createElement("span");
+    chip.className = "history-delta-change";
+    chip.textContent = `~${changes}`;
+    delta.append(chip);
+  }
+
+  delta.setAttribute("aria-label", parts.join(", "));
+  delta.title = parts.join(", ");
+  return delta;
+}
+
 function renderHistoryDialog() {
   const revisions = getRevisions().revisions;
   const count = revisions.length;
@@ -673,8 +758,11 @@ function renderHistoryDialog() {
     const info = document.createElement("div");
     const reason = document.createElement("span");
     const meta = document.createElement("span");
+    const actions = document.createElement("div");
+    const compare = document.createElement("button");
     const restore = document.createElement("button");
     const createdAt = formatBackupDate(revision.createdAt);
+    const comparison = getRevisionComparison(revision.id);
 
     item.className = "history-item";
     info.className = "history-item-info";
@@ -682,13 +770,25 @@ function renderHistoryDialog() {
     reason.textContent = revision.reason;
     meta.className = "history-item-meta";
     meta.textContent = `${createdAt} · ${revision.books} ${revision.books === 1 ? "lorebook" : "lorebooks"} · ${revision.entries} ${revision.entries === 1 ? "entry" : "entries"}`;
+    actions.className = "history-item-actions";
+    compare.type = "button";
+    compare.className = "btn";
+    compare.dataset.revisionCompare = revision.id;
+    compare.setAttribute("aria-label", `Compare snapshot: ${revision.reason}, ${createdAt}`);
+    compare.textContent = "Compare";
     restore.type = "button";
     restore.className = "btn";
-    restore.dataset.revisionId = revision.id;
+    restore.dataset.revisionRestore = revision.id;
     restore.setAttribute("aria-label", `Restore snapshot: ${revision.reason}, ${createdAt}`);
     restore.textContent = "Restore";
+    actions.append(compare, restore);
     info.append(reason, meta);
-    item.append(info, restore);
+
+    if (comparison.ok) {
+      info.append(renderRevisionDelta(comparison.diff));
+    }
+
+    item.append(info, actions);
     fragment.append(item);
   }
 
@@ -702,6 +802,39 @@ function openHistoryDialog() {
   if (!refs.historyDialog.open) {
     refs.historyDialog.showModal();
   }
+}
+
+async function handleCompareRevision(id) {
+  const comparison = getRevisionComparison(id);
+
+  if (!comparison.ok) {
+    toast(comparison.error, "error");
+    return;
+  }
+
+  const previous = comparison.previousRevision;
+  const entries = comparison.project.books.reduce((total, book) => total + book.entries.length, 0);
+
+  await showDiffDialog({
+    eyebrow: "Revision changes",
+    title: comparison.revision.reason,
+    message: previous
+      ? "Changes in this snapshot compared with the previous snapshot."
+      : "This is the oldest snapshot, shown against an empty project.",
+    details: [
+      { label: "Snapshot", value: comparison.revision.reason },
+      { label: "Created", value: formatBackupDate(comparison.revision.createdAt) },
+      {
+        label: "Compared with",
+        value: previous
+          ? `${previous.reason}, ${formatBackupDate(previous.createdAt)}`
+          : "Empty project"
+      },
+      { label: "Entries", value: String(entries) }
+    ],
+    diff: comparison.diff,
+    confirmLabel: "Close"
+  });
 }
 
 async function handleRestoreRevision(id) {
@@ -1128,6 +1261,53 @@ async function handleBulkDelete() {
   toast(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`);
 }
 
+function importStrategyMessage(strategy, fileName) {
+  if (strategy === "append") {
+    return `"${fileName}" is ready to append. Existing lorebooks are kept and imported entries are added after matching ones. The current project will be saved as a local backup first.`;
+  }
+
+  if (strategy === "merge") {
+    return `"${fileName}" is ready to merge by title. Matching entries are updated and new entries are added. The current project will be saved as a local backup first.`;
+  }
+
+  return `"${fileName}" is ready to import. The current project will be saved as a local backup before it is replaced.`;
+}
+
+function importConfirmLabel(strategy) {
+  if (strategy === "append") {
+    return "Append to project";
+  }
+
+  if (strategy === "merge") {
+    return "Merge by title";
+  }
+
+  return "Import and replace";
+}
+
+function importResultMessage(strategy, parsed, stats, entryCount) {
+  if (strategy === "append") {
+    const count = stats.entriesAdded;
+    return `Appended ${count} ${count === 1 ? "entry" : "entries"} from ${parsed.format}`;
+  }
+
+  if (strategy === "merge") {
+    const parts = [];
+
+    if (stats.entriesUpdated) {
+      parts.push(`${stats.entriesUpdated} updated`);
+    }
+
+    if (stats.entriesAdded) {
+      parts.push(`${stats.entriesAdded} added`);
+    }
+
+    return `Merged ${parsed.format}: ${parts.join(", ") || "no entry changes"}`;
+  }
+
+  return `Imported ${parsed.format}: ${entryCount} ${entryCount === 1 ? "entry" : "entries"}`;
+}
+
 async function handleImport(file) {
   if (!file) {
     return;
@@ -1151,17 +1331,38 @@ async function handleImport(file) {
 
   const bookCount = parsed.project.books.length;
   const entryCount = parsed.project.books.reduce((total, book) => total + book.entries.length, 0);
-  const accepted = await confirmAction({
-    title: "Import preview",
-    message: `"${file.name}" is ready to import. The current project will be saved as a local backup before it is replaced.`,
-    details: [
-      { label: "Format", value: parsed.format },
-      { label: "File", value: file.name },
-      { label: "Lorebooks", value: String(bookCount) },
-      { label: "Entries", value: String(entryCount) }
-    ],
-    warnings: parsed.warnings || [],
-    confirmLabel: "Import and replace"
+  let strategy = "replace";
+  const buildImportReview = (value) => {
+    const merged = mergeProject(getState(), parsed.project, value);
+
+    return {
+      diff: diffProjects(getState(), merged.project),
+      message: importStrategyMessage(value, file.name),
+      details: [
+        { label: "Format", value: parsed.format },
+        { label: "File", value: file.name },
+        { label: "Lorebooks", value: String(bookCount) },
+        { label: "Entries", value: String(entryCount) }
+      ],
+      warnings: parsed.warnings || [],
+      confirmLabel: importConfirmLabel(value)
+    };
+  };
+  const accepted = await showDiffDialog({
+    eyebrow: "Import",
+    title: "Review import changes",
+    ...buildImportReview(strategy),
+    controls: [{
+      id: "strategy",
+      label: "Import strategy",
+      value: strategy,
+      options: IMPORT_STRATEGIES.map(({ value, label }) => ({ value, label }))
+    }],
+    onChange: (value) => {
+      strategy = value;
+      return buildImportReview(value);
+    },
+    cancelLabel: "Cancel"
   });
 
   if (!accepted) {
@@ -1182,8 +1383,9 @@ async function handleImport(file) {
     }
   }
 
+  const merged = mergeProject(getState(), parsed.project, strategy);
   recordRevision(`Before importing ${file.name}`);
-  replaceProject(parsed.project);
+  replaceProject(merged.project);
 
   const sortMode = readSortMode();
 
@@ -1195,7 +1397,7 @@ async function handleImport(file) {
   renderAll();
   flushSave();
   recordRevision(`Imported ${file.name}`);
-  toast(`Imported ${parsed.format}: ${entryCount} ${entryCount === 1 ? "entry" : "entries"}`, "success");
+  toast(importResultMessage(strategy, parsed, merged.stats, entryCount), "success");
 
   if (backup.ok) {
     toast("Previous project saved as a pre-import backup");
@@ -1586,10 +1788,13 @@ refs.historyCloseBtn.addEventListener("click", () => {
 });
 
 refs.historyList.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-revision-id]");
+  const compare = event.target.closest("[data-revision-compare]");
+  const restore = event.target.closest("[data-revision-restore]");
 
-  if (button) {
-    handleRestoreRevision(button.dataset.revisionId);
+  if (compare) {
+    handleCompareRevision(compare.dataset.revisionCompare);
+  } else if (restore) {
+    handleRestoreRevision(restore.dataset.revisionRestore);
   }
 });
 

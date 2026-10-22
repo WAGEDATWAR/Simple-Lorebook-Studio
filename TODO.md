@@ -44,7 +44,8 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Add built-in entry templates and a template picker.
 - [ ] [P2] Add a "duplicate as template" flow for custom reusable entries.
 - [ ] [P1] Support regex keys with validation and a plain-text fallback.
-- [ ] [P2] Add a diff view when replacing or merging imported entries.
+- [x] [P2] Add a diff view when replacing imported entries and when comparing revision snapshots.
+- [x] [P2] Add an import merge mode that reuses the diff view.
 - [x] [P2] Add a notes or author-only field separate from injected content.
 - [ ] [P2] Add configurable word/character/token limits per entry.
 - [ ] [P2] Support markdown preview for content if the target frontends interpret it consistently.
@@ -60,7 +61,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [~] [P1] Implement character book lorebook import and export. (import complete; standalone character-book export pending)
 - [x] [P1] Implement Chub lorebook import and export using real exported files.
 - [x] [P1] Add format detection and a clear "unsupported file" message.
-- [ ] [P1] Add import merge strategies: replace, append, merge by title.
+- [x] [P1] Add import merge strategies: replace, append, merge by title.
 - [x] [P1] Preserve advanced SillyTavern fields such as recursion, depth, role, groups, sticky, cooldown, and scan depth.
 - [x] [P1] Add filename conventions for book exports and project backups.
 - [ ] [P2] Support character card containers (PNG/CHARX) and embedded character books.

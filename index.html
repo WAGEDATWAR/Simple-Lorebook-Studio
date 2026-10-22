@@ -486,6 +486,27 @@
     </div>
   </dialog>
 
+  <dialog id="diff-dialog" class="dialog diff-dialog" aria-labelledby="diff-title" aria-describedby="diff-message">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p id="diff-eyebrow" class="eyebrow">Changes</p>
+        <h2 id="diff-title">Review changes</h2>
+        <p id="diff-message" class="dialog-copy"></p>
+      </div>
+      <div id="diff-details" class="confirm-details" hidden>
+        <dl id="diff-detail-list" class="confirm-detail-list"></dl>
+        <div id="diff-warnings" class="confirm-warnings" hidden></div>
+      </div>
+      <div id="diff-controls" class="diff-controls" hidden></div>
+      <div id="diff-summary" class="diff-summary" aria-live="polite"></div>
+      <div id="diff-body" class="diff-body"></div>
+      <div class="dialog-actions">
+        <button id="diff-cancel" class="btn" type="button" hidden>Cancel</button>
+        <button id="diff-accept" class="btn btn-primary" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
     <div class="dialog-inner">
       <h2 id="confirm-title">Confirm action</h2>
