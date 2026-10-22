@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d12">
+  <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
+  <title>Lorebook Studio</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="icon" href="./favicon.ico" sizes="32x32">
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5V5.5Z"/>
+            <path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H13v16h4.5a2.5 2.5 0 0 1 2.5 2.5V5.5Z"/>
+          </svg>
+        </span>
+        <span class="brand-name">Lorebook Studio</span>
+      </div>
+
+      <span class="topbar-divider" aria-hidden="true"></span>
+
+      <div class="doc-title">
+        <label class="sr-only" for="book-name">Lorebook name</label>
+        <input id="book-name" class="doc-name" type="text" autocomplete="off" spellcheck="false" title="Click to rename this lorebook" placeholder="Untitled Lorebook">
+        <span id="save-state" class="save-state" data-state="saved" role="status" aria-live="polite">
+          <span class="save-dot" aria-hidden="true"></span>
+          <span class="save-label">Saved</span>
+        </span>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="history-controls" role="group" aria-label="History">
+          <button id="undo-btn" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v2"/>
+            </svg>
+          </button>
+          <button id="redo-btn" class="icon-btn" type="button" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0-6 6v2"/>
+            </svg>
+          </button>
+        </div>
+        <span class="action-divider" aria-hidden="true"></span>
+        <button id="import-btn" class="btn" type="button" aria-label="Import lorebook" title="Import a lorebook or Lorebook Studio project">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
+          </svg>
+          <span class="btn-label">Import</span>
+        </button>
+        <button id="export-btn" class="btn" type="button" aria-label="Export project" title="Export project as JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>
+          </svg>
+          <span class="btn-label">Export</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="Library">
+        <div class="sidebar-top">
+          <div class="book-section">
+            <div class="section-label" id="book-label">Lorebook</div>
+            <div class="book-controls">
+              <select id="book-select" class="book-select" aria-labelledby="book-label"></select>
+              <button id="new-book-btn" class="icon-btn" type="button" title="New lorebook" aria-label="New lorebook">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                  <path d="M12 5v14"/><path d="M5 12h14"/>
+                </svg>
+              </button>
+              <button id="delete-book-btn" class="icon-btn danger" type="button" title="Delete lorebook" aria-label="Delete lorebook">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>
+            </svg>
+            <label class="sr-only" for="entry-search">Search entries</label>
+            <input id="entry-search" type="search" placeholder="Search entries" autocomplete="off" spellcheck="false">
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+        </div>
+
+        <div class="entry-list-head">
+          <div class="entry-list-heading">
+            <span class="section-label">Entries</span>
+            <span id="entry-count" class="count" aria-live="polite">0</span>
+          </div>
+          <label class="sort-control">
+            <span class="sr-only">Sort entries</span>
+            <select id="entry-sort" class="sort-select" title="Sort entries">
+              <option value="manual">Manual order</option>
+              <option value="title">Title</option>
+              <option value="order">Insertion order</option>
+              <option value="updated">Last edited</option>
+              <option value="enabled">Enabled first</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="entry-list" class="entry-list" role="listbox" aria-label="Entries" aria-multiselectable="true" tabindex="-1"></div>
+
+        <div id="bulk-bar" class="bulk-bar" aria-live="polite" hidden>
+          <span id="bulk-count" class="bulk-count">0 selected</span>
+          <div class="bulk-actions">
+            <button id="bulk-enable-btn" class="icon-btn" type="button" title="Enable selected entries" aria-label="Enable selected entries">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.4 2.4 4.6-5"/>
+              </svg>
+            </button>
+            <button id="bulk-disable-btn" class="icon-btn" type="button" title="Disable selected entries" aria-label="Disable selected entries">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5"/><path d="m6.5 6.5 11 11"/>
+              </svg>
+            </button>
+            <button id="bulk-delete-btn" class="icon-btn danger" type="button" title="Delete selected entries" aria-label="Delete selected entries">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
+              </svg>
+            </button>
+            <button id="bulk-clear-btn" class="icon-btn" type="button" title="Clear selection" aria-label="Clear selection">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                <path d="m6 6 12 12"/><path d="M18 6 6 18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button id="add-entry-btn" class="btn btn-primary btn-block" type="button" title="New entry (Alt+N)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+            <span>New entry</span>
+            <span class="shortcut" aria-hidden="true">Alt N</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="editor" aria-label="Entry editor">
+        <div id="editor-empty" class="empty">
+          <div class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="8.5"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>
+            </svg>
+          </div>
+          <h2 id="empty-title">Select an entry</h2>
+          <p id="empty-text">Choose an entry from the list or create a new one to start writing.</p>
+          <button id="empty-add-btn" class="btn btn-primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+            New entry
+          </button>
+        </div>
+
+        <div id="editor-pane" class="editor-pane" hidden>
+          <div class="editor-scroll">
+            <div class="editor-inner editor-head">
+              <div class="title-field">
+                <label class="eyebrow" for="entry-title">Entry name</label>
+                <input id="entry-title" class="entry-title" type="text" placeholder="Untitled entry" autocomplete="off" spellcheck="false">
+              </div>
+              <div class="editor-head-actions">
+                <label class="switch" title="Toggle whether this entry can be activated">
+                  <input id="entry-enabled" type="checkbox">
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span>Enabled</span>
+                </label>
+                <button id="duplicate-entry-btn" class="icon-btn" type="button" title="Duplicate entry" aria-label="Duplicate entry">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h1"/>
+                  </svg>
+                </button>
+                <button id="delete-entry-btn" class="icon-btn danger" type="button" title="Delete entry" aria-label="Delete entry">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v5"/><path d="M14 11v5"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="editor-inner editor-body">
+              <section class="editor-section">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="entry-keys">Trigger keys <span class="hint">comma separated</span></label>
+                    <input id="entry-keys" type="text" placeholder="sword, blade, weapon" autocomplete="off" spellcheck="false">
+                  </div>
+                  <div class="field">
+                    <label for="entry-secondary-keys">Secondary keys <span class="hint">optional</span></label>
+                    <input id="entry-secondary-keys" type="text" placeholder="inner voice, thought" autocomplete="off" spellcheck="false">
+                  </div>
+                </div>
+              </section>
+
+              <section class="editor-section content-section">
+                <div class="section-head">
+                  <label class="section-title" for="entry-content">Content</label>
+                </div>
+                <textarea id="entry-content" class="content-area" placeholder="Write the lore that gets injected into the model's context." spellcheck="true"></textarea>
+              </section>
+            </div>
+          </div>
+
+          <aside id="details-panel" class="details-panel" aria-label="Entry details">
+            <div class="details-head">
+              <span class="section-label">Details</span>
+              <button id="details-toggle" class="icon-btn details-toggle" type="button" aria-label="Hide entry details" aria-controls="details-panel-body" aria-expanded="true" title="Hide entry details">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m9 6 6 6-6 6"/>
+                </svg>
+              </button>
+            </div>
+
+            <div id="details-panel-body" class="details-scroll">
+              <section class="details-section">
+                <h2 class="details-label">Entry size</h2>
+                <div class="stat-grid" aria-live="polite">
+                  <div class="stat-block">
+                    <span id="entry-stat-chars" class="stat-value">0</span>
+                    <span class="stat-name">Characters</span>
+                  </div>
+                  <div class="stat-block">
+                    <span id="entry-stat-words" class="stat-value">0</span>
+                    <span class="stat-name">Words</span>
+                  </div>
+                  <div class="stat-block">
+                    <span id="entry-stat-tokens" class="stat-value">~0</span>
+                    <span class="stat-name">Tokens</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="details-section">
+                <h2 class="details-label">Injection</h2>
+
+                <div class="details-fields">
+                  <div class="field">
+                    <label for="entry-order">Insertion order</label>
+                    <div class="stepper">
+                      <button type="button" data-step="-10" aria-label="Decrease insertion order">&minus;</button>
+                      <input id="entry-order" type="number" inputmode="numeric" min="0" max="9999" step="1">
+                      <button type="button" data-step="10" aria-label="Increase insertion order">+</button>
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="entry-position">Position</label>
+                    <select id="entry-position">
+                      <option value="before_char">Before character</option>
+                      <option value="after_char">After character</option>
+                      <option value="before_an">Before author's note</option>
+                      <option value="after_an">After author's note</option>
+                      <option value="at_depth">At depth</option>
+                    </select>
+                  </div>
+
+                  <div class="field">
+                    <label for="entry-probability">Trigger chance</label>
+                    <div class="range-row">
+                      <input id="entry-probability" type="range" min="0" max="100" step="1">
+                      <output id="entry-probability-output" for="entry-probability">100%</output>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chip-row">
+                  <label class="chip"><input id="entry-constant" type="checkbox">Always on</label>
+                  <label class="chip"><input id="entry-selective" type="checkbox">Selective</label>
+                  <label class="chip"><input id="entry-case-sensitive" type="checkbox">Case sensitive</label>
+                  <label class="chip"><input id="entry-whole-words" type="checkbox">Match whole words</label>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="dialog-inner">
+      <h2 id="confirm-title">Confirm action</h2>
+      <p id="confirm-message"></p>
+      <div class="dialog-actions">
+        <button id="confirm-cancel" class="btn" type="button">Cancel</button>
+        <button id="confirm-accept" class="btn btn-danger" type="button">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+  <input id="import-input" type="file" accept=".json,application/json" hidden>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
