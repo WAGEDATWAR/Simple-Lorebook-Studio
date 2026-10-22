@@ -28,11 +28,11 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P0] Add real fixture tests that export, re-import, and compare canonical snapshots.
 - [x] [P0] Add single-book export alongside the whole-project backup.
 - [x] [P0] Add an import preview stage and automatic pre-import backup.
-- [~] [P1] Add automated tests for schema, store actions, and native format handling. (format round-trip and store tests complete; schema tests pending)
+- [x] [P1] Add automated tests for schema, store actions, and native format handling.
 - [x] [P1] Add entry duplication and reordering.
 - [x] [P1] Add undo/redo for edits and structural changes.
-- [ ] [P1] Expose the stored book description in the interface.
-- [ ] [P1] Add a validation panel for empty content, duplicate keys, missing keys on non-constant entries, and order collisions.
+- [x] [P1] Expose the stored book description in the interface.
+- [x] [P1] Add a validation panel for empty content, duplicate keys, missing keys on non-constant entries, and order collisions.
 
 ## Editor and Authoring
 
@@ -76,7 +76,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [ ] [P1] Preserve list scroll and focus across mutations and re-renders.
 - [ ] [P2] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] Add pinned or recent entries.
-- [ ] [P2] Add duplicate key and overlapping key reports.
+- [ ] [P2] Add overlapping key reports and key coverage summaries.
 
 ## Context and Token Tools
 
@@ -123,10 +123,10 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 ## Engineering and QA
 
 - [x] [P0] Choose and configure a test runner using the built-in Node test runner.
-- [~] [P0] Add unit tests for normalization, mutations, native import/export, and format detection. (format round-trip, import, store mutation, sorting, and backup persistence tests complete; schema tests pending)
+- [x] [P0] Add unit tests for normalization, mutations, native import/export, and format detection.
 - [ ] [P0] Add browser end-to-end tests for CRUD, autosave, search, import/export, shortcuts, and dialogs.
 - [ ] [P1] Add linting and formatting configuration.
-- [ ] [P1] Add CI running syntax checks, unit tests, and end-to-end tests.
+- [~] [P1] Add CI running syntax checks, unit tests, and end-to-end tests. (GitHub Actions runs syntax checks and unit tests; browser E2E pending)
 - [ ] [P1] Add explicit size and schema limits for imported files.
 - [ ] [P1] Ensure all imported data is rendered as text and never injected as HTML.
 - [ ] [P1] Add a performance benchmark for large books and virtualization if needed.

@@ -1,6 +1,6 @@
 {
   "name": "lorebook-studio",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "A local-first web editor for LLM roleplay lorebooks.",
@@ -8,6 +8,6 @@
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/store.js && node --check src/schema.js && node --check src/storage.js && node --check src/format.js && node --check src/sample.js && node --check src/utils.js && node --check src/formats/index.js && node --check src/formats/helpers.js && node --check src/formats/native.js && node --check src/formats/chub.js && node --check src/formats/sillytavern.js && node --check src/ui/editor.js && node --check src/ui/overlays.js && node --check src/ui/sidebar.js"
+    "check": "node --check src/main.js && node --check src/store.js && node --check src/schema.js && node --check src/storage.js && node --check src/format.js && node --check src/sample.js && node --check src/utils.js && node --check src/validation.js && node --check src/formats/index.js && node --check src/formats/helpers.js && node --check src/formats/native.js && node --check src/formats/chub.js && node --check src/formats/sillytavern.js && node --check src/ui/editor.js && node --check src/ui/overlays.js && node --check src/ui/sidebar.js"
   }
 }

@@ -312,6 +312,25 @@ export function renameActiveBook(name) {
   return book;
 }
 
+export function updateActiveBookDescription(description) {
+  const book = getActiveBook();
+
+  if (!book) {
+    return null;
+  }
+
+  const nextDescription = String(description);
+
+  if (book.description === nextDescription) {
+    return book;
+  }
+
+  captureHistory(`edit-book-description:${book.id}`);
+  book.description = nextDescription;
+  book.updatedAt = Date.now();
+  return book;
+}
+
 export function deleteBook(id = state.activeBookId) {
   const index = state.books.findIndex((book) => book.id === id);
 

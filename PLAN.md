@@ -1,6 +1,6 @@
 # Lorebook Studio - Build Plan
 
-Status: Foundation, editor depth, and interoperability export (v0.4)
+Status: Foundation, editor depth, and interoperability export (v0.5)
 Updated: 2026-10-22
 
 ## 1. Summary
@@ -26,12 +26,14 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Image generation or character card artwork editing.
 - Emulating every activation rule at runtime. The editor captures settings; consumers apply them.
 
-## 4. Current Foundation (v0.4)
+## 4. Current Foundation (v0.5)
 
 ### What works
 
 - One local project containing multiple lorebooks.
 - Lorebook create, rename, switch, and delete.
+- Editable book descriptions stored with each lorebook and previewed in the sidebar.
+- Book-level validation for empty content, repeated or overlapping keys, missing keys on non-constant entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Search across title, content, trigger keys, and secondary keys.
 - Entry fields: title, trigger keys, secondary keys, content, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
@@ -63,7 +65,6 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Duplicate source UIDs within a manually edited import are not remapped before normalization.
 - Undo history is session-only and is not restored after reload.
 - Drag reordering is limited to manual order with no active search, because reordering a filtered subset is ambiguous.
-- No book description editor, tags, folders, or validation panel.
 - Token count is an estimate of `ceil(characters / 4)`, not a real tokenizer.
 - No lint configuration or committed automated browser test suite yet.
 - The sample project appears on first run; there is no onboarding flow or sample reset.
@@ -78,6 +79,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/schema.js` | Canonical project/book/entry factories and position values |
 | `src/store.js` | Project state, mutation actions, undo/redo, selection, and sorting mode |
 | `src/storage.js` | Project localStorage load/save plus pre-import backup save/restore |
+| `src/validation.js` | Book-level content, key, and insertion-order issue detection |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
 | `src/sample.js` | First-run demo project |
@@ -86,9 +88,12 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/ui/overlays.js` | Confirmation dialog with details/warnings and toasts |
 | `src/utils.js` | IDs, clamp, slugify |
 | `test/formats.test.js` | Detection, field mapping, fixture round-trips, capabilities, and native serialization tests |
+| `test/schema.test.js` | Normalization, defaults, clamping, and active-ID resolution tests |
+| `test/validation.test.js` | Empty content, duplicate key, missing key, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence and pre-import backup tests |
-| `test/store.test.js` | History, duplication, selection, bulk actions, reordering, and sorting tests |
+| `test/store.test.js` | History, description edits, duplication, selection, bulk actions, reordering, and sorting tests |
+| `.github/workflows/ci.yml` | CI syntax checks and unit tests on pushes and pull requests |
 | `scripts/serve.mjs` | Zero-dependency static dev server |
 | `package.json` | Dev/check/test scripts |
 
@@ -111,6 +116,7 @@ index.html
   -> src/main.js (orchestration + events)
        -> store.js (mutations + active selection)
             -> schema.js (normalization + factories)
+       -> validation.js (book-level issue checks)
        -> storage.js -> format.js -> formats/ (detection + adapters)
        -> ui/{sidebar,editor,overlays}.js (targeted rendering)
 ```
@@ -166,7 +172,7 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 }
 ```
 
-`description` is stored but not yet exposed in the interface.
+`description` is edited from a collapsible sidebar control and is included in native project backups.
 
 ### Entry
 
@@ -322,6 +328,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Destructive actions require confirmation; ordinary actions do not.
 - Import confirmation is a preview with format, counts, and warnings. It creates a pre-import backup before replacement and leaves backup restore one click away in the export dialog.
 - The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
+- Book descriptions live in a collapsible sidebar control with a one-line preview.
+- The entry-list warning control summarizes validation issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering.
@@ -360,9 +368,9 @@ Exit criteria: the app loads with no build step, edits persist across reloads, n
 
 ### Phase 1 - Editor depth
 
-Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, and entry ID badges.
+Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, entry ID badges, editable book descriptions, and the validation panel.
 
-Remaining: book description editing, validation panel, richer empty/search states, resizable panes, and full keyboard list navigation.
+Remaining: richer empty/search states, resizable panes, and full keyboard list navigation.
 
 Exit criteria: a 100-entry book can be maintained without leaving the keyboard, and common editing mistakes are recoverable.
 
@@ -397,15 +405,15 @@ Exit criteria: a new user can create and export their first lorebook without ext
 Current checks:
 
 - `npm run check` validates every JavaScript module syntactically.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, history, duplication, selection, bulk actions, reordering, and sorting. The suite currently passes 20 tests.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, history, description edits, duplication, selection, bulk actions, reordering, sorting, schema normalization, and validation. The suite currently passes 34 tests.
+- GitHub Actions runs `npm run check` and `npm test` on pushes to `main` and pull requests.
 - The static server returns correct module content types.
-- Headless Chrome verified the export dialog at 1440 px and 390 px with no horizontal overflow.
-- Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, and undoable project replacement.
-- Visual review covered the export dialog, import preview, backup metadata, mobile dialog layout, focus, contrast, and empty space.
+- Headless Chrome verified the export and validation dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
+- Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, and jump-to-entry.
+- Visual review covered the export dialog, validation dialog, import preview, backup metadata, mobile dialog layout, focus, contrast, and empty space.
 
 Planned checks:
 
-- Schema normalization and validation tests.
 - Broader Chub fixture coverage against additional real exported files.
 - A committed browser end-to-end test suite for CRUD, autosave, import/export, shortcuts, and dialogs.
 - Automated accessibility scan plus manual screen-reader pass.
@@ -436,11 +444,11 @@ Planned checks:
 
 ## 12. Immediate Next Steps
 
-1. Add book description editing and a validation panel for empty content, duplicate keys, missing keys, and order collisions.
-2. Add standalone character-book export and broaden Chub fixture coverage.
-3. Add full keyboard navigation and import merge strategies.
-4. Extend the test suite to schema validation and committed browser end-to-end coverage.
-5. Move storage to IndexedDB and add broader automatic snapshots for large projects.
+1. Add standalone character-book export and broaden Chub fixture coverage.
+2. Add full keyboard navigation and import merge strategies.
+3. Commit a browser end-to-end suite and extend CI to run it.
+4. Move storage to IndexedDB and add broader automatic snapshots for large projects.
+5. Add bulk insertion-order changes and replace comma-separated key inputs with editable chips.
 
 ## 13. Open Questions
 

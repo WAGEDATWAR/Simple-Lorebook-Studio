@@ -81,6 +81,17 @@
                 </svg>
               </button>
             </div>
+            <details id="book-description-details" class="book-description">
+              <summary>
+                <span class="section-label">Description</span>
+                <span id="book-description-preview" class="book-description-preview">Add a description</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </summary>
+              <label class="sr-only" for="book-description">Lorebook description</label>
+              <textarea id="book-description" class="book-description-input" rows="3" placeholder="Optional notes about this lorebook."></textarea>
+            </details>
           </div>
 
           <div class="search">
@@ -98,16 +109,24 @@
             <span class="section-label">Entries</span>
             <span id="entry-count" class="count" aria-live="polite">0</span>
           </div>
-          <label class="sort-control">
-            <span class="sr-only">Sort entries</span>
-            <select id="entry-sort" class="sort-select" title="Sort entries">
-              <option value="manual">Manual order</option>
-              <option value="title">Title</option>
-              <option value="order">Insertion order</option>
-              <option value="updated">Last edited</option>
-              <option value="enabled">Enabled first</option>
-            </select>
-          </label>
+          <div class="entry-list-tools">
+            <button id="validation-btn" class="validation-btn" type="button" title="No validation issues" aria-label="No validation issues">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3 3.2 20h17.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/>
+              </svg>
+              <span id="validation-count" class="validation-count" aria-hidden="true">0</span>
+            </button>
+            <label class="sort-control">
+              <span class="sr-only">Sort entries</span>
+              <select id="entry-sort" class="sort-select" title="Sort entries">
+                <option value="manual">Manual order</option>
+                <option value="title">Title</option>
+                <option value="order">Insertion order</option>
+                <option value="updated">Last edited</option>
+                <option value="enabled">Enabled first</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         <div id="entry-list" class="entry-list" role="listbox" aria-label="Entries" aria-multiselectable="true" tabindex="-1"></div>
@@ -311,6 +330,21 @@
       </section>
       <div class="dialog-actions">
         <button id="export-cancel" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="validation-dialog" class="dialog validation-dialog" aria-labelledby="validation-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Checks</p>
+        <h2 id="validation-title">Lorebook validation</h2>
+        <p id="validation-summary" class="dialog-copy">No issues found.</p>
+      </div>
+      <div id="validation-categories" class="validation-categories" hidden></div>
+      <div id="validation-issues" class="validation-issues"></div>
+      <div class="dialog-actions">
+        <button id="validation-close" class="btn" type="button">Close</button>
       </div>
     </div>
   </dialog>

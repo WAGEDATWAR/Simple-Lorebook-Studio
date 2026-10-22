@@ -20,6 +20,7 @@ import {
   setSortMode,
   toggleEntrySelection,
   undo,
+  updateActiveBookDescription,
   updateActiveEntry
 } from "../src/store.js";
 import { sortEntries } from "../src/ui/sidebar.js";
@@ -73,6 +74,17 @@ test("undoes and redoes entry edits", () => {
   assert.equal(canRedo(), true);
   assert.equal(redo(), true);
   assert.equal(getActiveEntry().title, "Bravo edited");
+});
+
+test("edits the active book description with undo", () => {
+  initStore(createTestProject());
+  updateActiveBookDescription("A quiet harbor archive.");
+
+  assert.equal(getActiveBook().description, "A quiet harbor archive.");
+  assert.equal(undo(), true);
+  assert.equal(getActiveBook().description, "");
+  assert.equal(redo(), true);
+  assert.equal(getActiveBook().description, "A quiet harbor archive.");
 });
 
 test("duplicates entries without reusing source identity", () => {

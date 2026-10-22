@@ -33,6 +33,7 @@ import {
   setSortMode,
   toggleEntrySelection,
   undo,
+  updateActiveBookDescription,
   updateActiveEntry
 } from "./store.js";
 import {
@@ -46,9 +47,12 @@ import { renderEditor, syncEntryStats } from "./ui/editor.js";
 import { confirmAction, toast } from "./ui/overlays.js";
 import { renderSidebar } from "./ui/sidebar.js";
 import { clamp } from "./utils.js";
+import { VALIDATION_LABELS, validateBook } from "./validation.js";
 
 const refs = {
   bookName: document.querySelector("#book-name"),
+  bookDescription: document.querySelector("#book-description"),
+  bookDescriptionPreview: document.querySelector("#book-description-preview"),
   saveState: document.querySelector("#save-state"),
   undoBtn: document.querySelector("#undo-btn"),
   redoBtn: document.querySelector("#redo-btn"),
@@ -67,6 +71,13 @@ const refs = {
   entrySearch: document.querySelector("#entry-search"),
   entrySort: document.querySelector("#entry-sort"),
   entryCount: document.querySelector("#entry-count"),
+  validationBtn: document.querySelector("#validation-btn"),
+  validationCount: document.querySelector("#validation-count"),
+  validationDialog: document.querySelector("#validation-dialog"),
+  validationSummary: document.querySelector("#validation-summary"),
+  validationCategories: document.querySelector("#validation-categories"),
+  validationIssues: document.querySelector("#validation-issues"),
+  validationCloseBtn: document.querySelector("#validation-close"),
   entryList: document.querySelector("#entry-list"),
   bulkBar: document.querySelector("#bulk-bar"),
   bulkCount: document.querySelector("#bulk-count"),
@@ -171,12 +182,21 @@ function updateHistoryButtons() {
   refs.redoBtn.disabled = !canRedo();
 }
 
+function updateBookDescriptionPreview(description) {
+  const preview = String(description).replace(/\s+/g, " ").trim();
+  refs.bookDescriptionPreview.textContent = preview || "Add a description";
+  refs.bookDescriptionPreview.title = preview;
+}
+
 function renderAll() {
   const book = getActiveBook();
   refs.bookName.value = book?.name ?? "";
+  refs.bookDescription.value = book?.description ?? "";
+  updateBookDescriptionPreview(book?.description ?? "");
   renderSidebar(refs);
   renderEditor(refs);
   updateHistoryButtons();
+  updateValidationIndicator();
   updateDocumentTitle();
 }
 
@@ -184,7 +204,98 @@ function scheduleSave() {
   window.clearTimeout(saveTimer);
   setSaveState("saving");
   updateHistoryButtons();
+  updateValidationIndicator();
   saveTimer = window.setTimeout(flushSave, 400);
+}
+
+function updateValidationIndicator() {
+  const count = validateBook(getActiveBook()).length;
+  const label = count
+    ? `${count} ${count === 1 ? "validation issue" : "validation issues"}`
+    : "No validation issues";
+
+  refs.validationCount.textContent = String(count);
+  refs.validationBtn.classList.toggle("has-issues", count > 0);
+  refs.validationBtn.title = label;
+  refs.validationBtn.setAttribute("aria-label", label);
+}
+
+function renderValidationDialog() {
+  const issues = validateBook(getActiveBook());
+  const entryCount = new Set(issues.map((issue) => issue.entryId)).size;
+
+  refs.validationSummary.textContent = issues.length
+    ? `${issues.length} ${issues.length === 1 ? "issue" : "issues"} across ${entryCount} ${entryCount === 1 ? "entry" : "entries"}.`
+    : "No issues found. Empty content, duplicate keys, missing keys, and insertion-order collisions will appear here.";
+  refs.validationCategories.replaceChildren();
+  refs.validationIssues.replaceChildren();
+
+  if (!issues.length) {
+    const empty = document.createElement("div");
+    empty.className = "validation-empty";
+    empty.textContent = "Everything looks good.";
+    refs.validationIssues.append(empty);
+    refs.validationCategories.hidden = true;
+    return;
+  }
+
+  for (const [code, label] of Object.entries(VALIDATION_LABELS)) {
+    const count = issues.filter((issue) => issue.code === code).length;
+
+    if (!count) {
+      continue;
+    }
+
+    const chip = document.createElement("span");
+    const value = document.createElement("strong");
+    chip.className = "validation-chip";
+    chip.append(document.createTextNode(`${label} `), value);
+    value.textContent = String(count);
+    refs.validationCategories.append(chip);
+  }
+
+  refs.validationCategories.hidden = false;
+  const fragment = document.createDocumentFragment();
+
+  for (const issue of issues) {
+    const button = document.createElement("button");
+    const head = document.createElement("span");
+    const type = document.createElement("span");
+    const entry = document.createElement("span");
+    const message = document.createElement("span");
+
+    button.type = "button";
+    button.className = "validation-issue";
+    button.dataset.entryId = issue.entryId;
+    button.title = `Select ${issue.entryTitle}`;
+    head.className = "validation-issue-head";
+    type.className = "validation-issue-type";
+    type.textContent = issue.label;
+    entry.className = "validation-issue-entry";
+    entry.textContent = issue.entryTitle;
+    message.className = "validation-issue-message";
+    message.textContent = issue.message;
+    head.append(type, entry);
+    button.append(head, message);
+    fragment.append(button);
+  }
+
+  refs.validationIssues.append(fragment);
+}
+
+function openValidationDialog() {
+  renderValidationDialog();
+  refs.validationDialog.showModal();
+}
+
+function jumpToValidationEntry(entryId) {
+  refs.validationDialog.close();
+  clearSearch();
+  setActiveEntry(entryId);
+  renderAll();
+  scrollEntryCardIntoView(entryId);
+  focusEntryCard(entryId);
+  scheduleSave();
 }
 
 function focusEntryCard(id) {
@@ -710,6 +821,12 @@ refs.bookName.addEventListener("blur", () => {
   scheduleSave();
 });
 
+refs.bookDescription.addEventListener("input", (event) => {
+  updateActiveBookDescription(event.target.value);
+  updateBookDescriptionPreview(event.target.value);
+  scheduleSave();
+});
+
 refs.entrySearch.addEventListener("input", (event) => {
   setSearchQuery(event.target.value);
   renderSidebar(refs);
@@ -1035,6 +1152,26 @@ refs.restoreBackupBtn.addEventListener("click", () => {
 refs.exportDialog.addEventListener("click", (event) => {
   if (event.target === refs.exportDialog) {
     refs.exportDialog.close();
+  }
+});
+
+refs.validationBtn.addEventListener("click", openValidationDialog);
+
+refs.validationCloseBtn.addEventListener("click", () => {
+  refs.validationDialog.close();
+});
+
+refs.validationIssues.addEventListener("click", (event) => {
+  const issue = event.target.closest("[data-entry-id]");
+
+  if (issue) {
+    jumpToValidationEntry(issue.dataset.entryId);
+  }
+});
+
+refs.validationDialog.addEventListener("click", (event) => {
+  if (event.target === refs.validationDialog) {
+    refs.validationDialog.close();
   }
 });
 
