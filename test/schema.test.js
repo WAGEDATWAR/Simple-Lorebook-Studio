@@ -22,6 +22,7 @@ test("creates entries with defaults and clamps input", () => {
     keys: [" alpha ", "alpha", ""],
     secondaryKeys: [" beta "],
     content: "Content",
+    notes: "Author-only notes",
     enabled: false,
     constant: true,
     selective: true,
@@ -39,6 +40,7 @@ test("creates entries with defaults and clamps input", () => {
   assert.equal(entry.title, "");
   assert.deepEqual(entry.keys, ["alpha", "alpha"]);
   assert.deepEqual(entry.secondaryKeys, ["beta"]);
+  assert.equal(entry.notes, "Author-only notes");
   assert.equal(entry.enabled, false);
   assert.equal(entry.constant, true);
   assert.equal(entry.selective, true);
@@ -61,6 +63,7 @@ test("creates entries with a generated id and lower bounds", () => {
   assert.match(entry.id, /^entry_/);
   assert.equal(entry.order, 0);
   assert.equal(entry.probability, 0);
+  assert.equal(entry.notes, "");
   assert.equal(entry.enabled, true);
 });
 

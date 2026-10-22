@@ -38,11 +38,16 @@ import {
 } from "./store.js";
 import {
   getProjectBackupInfo,
+  getRevisions,
   loadProject,
   loadProjectBackup,
+  loadRevision,
   saveProject,
-  saveProjectBackup
+  saveProjectBackup,
+  saveRevision
 } from "./storage.js";
+import { buildBookOverview } from "./overview.js";
+import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
 import { renderEditor, syncEntryStats } from "./ui/editor.js";
 import { confirmAction, toast } from "./ui/overlays.js";
 import { renderSidebar } from "./ui/sidebar.js";
@@ -56,6 +61,13 @@ const refs = {
   saveState: document.querySelector("#save-state"),
   undoBtn: document.querySelector("#undo-btn"),
   redoBtn: document.querySelector("#redo-btn"),
+  historyBtn: document.querySelector("#history-btn"),
+  historyDialog: document.querySelector("#history-dialog"),
+  historyCount: document.querySelector("#history-count"),
+  historyStatus: document.querySelector("#history-status"),
+  historyList: document.querySelector("#history-list"),
+  historySaveBtn: document.querySelector("#history-save-btn"),
+  historyCloseBtn: document.querySelector("#history-close"),
   importBtn: document.querySelector("#import-btn"),
   exportBtn: document.querySelector("#export-btn"),
   importInput: document.querySelector("#import-input"),
@@ -71,6 +83,22 @@ const refs = {
   entrySearch: document.querySelector("#entry-search"),
   entrySort: document.querySelector("#entry-sort"),
   entryCount: document.querySelector("#entry-count"),
+  overviewBtn: document.querySelector("#overview-btn"),
+  overviewDialog: document.querySelector("#overview-dialog"),
+  overviewSummary: document.querySelector("#overview-summary"),
+  overviewEntries: document.querySelector("#overview-entries"),
+  overviewEnabled: document.querySelector("#overview-enabled"),
+  overviewTokens: document.querySelector("#overview-tokens"),
+  overviewEnabledTokens: document.querySelector("#overview-enabled-tokens"),
+  overviewKeys: document.querySelector("#overview-keys"),
+  overviewCoverage: document.querySelector("#overview-coverage"),
+  overviewMeterBar: document.querySelector("#overview-meter-bar"),
+  overviewAlwaysOn: document.querySelector("#overview-always-on"),
+  overviewMissingKeys: document.querySelector("#overview-missing-keys"),
+  overviewSharedKeys: document.querySelector("#overview-shared-keys"),
+  overviewAverage: document.querySelector("#overview-average"),
+  overviewLongest: document.querySelector("#overview-longest"),
+  overviewCloseBtn: document.querySelector("#overview-close"),
   validationBtn: document.querySelector("#validation-btn"),
   validationCount: document.querySelector("#validation-count"),
   validationDialog: document.querySelector("#validation-dialog"),
@@ -79,6 +107,10 @@ const refs = {
   validationIssues: document.querySelector("#validation-issues"),
   validationCloseBtn: document.querySelector("#validation-close"),
   entryList: document.querySelector("#entry-list"),
+  templateBtn: document.querySelector("#template-btn"),
+  templateDialog: document.querySelector("#template-dialog"),
+  templateList: document.querySelector("#template-list"),
+  templateCloseBtn: document.querySelector("#template-close"),
   bulkBar: document.querySelector("#bulk-bar"),
   bulkCount: document.querySelector("#bulk-count"),
   bulkEnableBtn: document.querySelector("#bulk-enable-btn"),
@@ -100,6 +132,7 @@ const refs = {
   entryKeys: document.querySelector("#entry-keys"),
   entrySecondaryKeys: document.querySelector("#entry-secondary-keys"),
   entryContent: document.querySelector("#entry-content"),
+  entryNotes: document.querySelector("#entry-notes"),
   entryStatChars: document.querySelector("#entry-stat-chars"),
   entryStatWords: document.querySelector("#entry-stat-words"),
   entryStatTokens: document.querySelector("#entry-stat-tokens"),
@@ -115,10 +148,12 @@ const refs = {
 
 let saveTimer = 0;
 let saveFailed = false;
+const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
+const AUTO_REVISION_INTERVAL_MS = 5 * 60 * 1000;
 
 let draggedEntryId = null;
 let dropTargetId = null;
@@ -288,6 +323,45 @@ function openValidationDialog() {
   refs.validationDialog.showModal();
 }
 
+function renderOverviewDialog() {
+  const book = getActiveBook();
+  const overview = buildBookOverview(book);
+  const percent = Math.round(overview.coverage * 100);
+  const bookName = book?.name?.trim() || "this lorebook";
+
+  refs.overviewSummary.textContent = overview.entries
+    ? `${overview.enabled} of ${overview.entries} ${overview.entries === 1 ? "entry" : "entries"} enabled in ${bookName}.`
+    : "This lorebook has no entries yet.";
+  refs.overviewEntries.textContent = numberFormatter.format(overview.entries);
+  refs.overviewEnabled.textContent = numberFormatter.format(overview.enabled);
+  refs.overviewTokens.textContent = `~${numberFormatter.format(overview.totals.tokens)}`;
+  refs.overviewEnabledTokens.textContent = `~${numberFormatter.format(overview.enabledTotals.tokens)}`;
+  refs.overviewKeys.textContent = numberFormatter.format(overview.uniqueKeys);
+  refs.overviewCoverage.textContent = `${percent}%`;
+  refs.overviewMeterBar.style.width = `${percent}%`;
+  refs.overviewMeterBar.parentElement.setAttribute("aria-label", `Trigger key coverage: ${percent}%`);
+  refs.overviewAlwaysOn.textContent = numberFormatter.format(overview.alwaysOn);
+  refs.overviewMissingKeys.textContent = numberFormatter.format(overview.missingKeys);
+  refs.overviewSharedKeys.textContent = numberFormatter.format(overview.sharedKeys);
+  refs.overviewAverage.textContent = `~${numberFormatter.format(overview.averageTokens)} tokens`;
+  refs.overviewLongest.replaceChildren();
+
+  if (overview.longestEntry) {
+    const name = document.createElement("span");
+    name.textContent = overview.longestEntry.title;
+    refs.overviewLongest.append(
+      document.createTextNode("Longest entry: "),
+      name,
+      document.createTextNode(` (~${numberFormatter.format(overview.longestEntry.tokens)} tokens)`)
+    );
+  }
+}
+
+function openOverviewDialog() {
+  renderOverviewDialog();
+  refs.overviewDialog.showModal();
+}
+
 function jumpToValidationEntry(entryId) {
   refs.validationDialog.close();
   clearSearch();
@@ -322,6 +396,7 @@ function flushSave() {
     saveFailed = true;
   } else {
     saveFailed = false;
+    maybeSaveRevision();
   }
 
   return ok;
@@ -393,6 +468,143 @@ function refreshBackupStatus() {
   const entryLabel = `${info.entries} ${info.entries === 1 ? "entry" : "entries"}`;
   refs.backupStatus.textContent = `${bookLabel} · ${entryLabel}\n${formatBackupDate(info.createdAt)}`;
   refs.restoreBackupBtn.disabled = false;
+}
+
+function recordRevision(reason) {
+  return saveRevision(getState(), reason);
+}
+
+function setHistoryStatus(message, tone = "") {
+  refs.historyStatus.textContent = message;
+  refs.historyStatus.hidden = !message;
+  refs.historyStatus.classList.toggle("is-error", tone === "error");
+  refs.historyStatus.classList.toggle("is-success", tone === "success");
+}
+
+function maybeSaveRevision() {
+  const latest = getRevisions().revisions[0] ?? null;
+
+  if (!latest) {
+    recordRevision("Initial snapshot");
+    return;
+  }
+
+  if (Date.now() - latest.createdAt >= AUTO_REVISION_INTERVAL_MS) {
+    recordRevision("Automatic snapshot");
+  }
+}
+
+function renderHistoryDialog() {
+  const revisions = getRevisions().revisions;
+  const count = revisions.length;
+
+  refs.historyCount.textContent = `${count} ${count === 1 ? "snapshot" : "snapshots"}`;
+  refs.historyList.replaceChildren();
+
+  if (!count) {
+    const empty = document.createElement("div");
+    empty.className = "history-empty";
+    empty.textContent = "No snapshots yet. Save one now or keep editing to create automatic snapshots.";
+    refs.historyList.append(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  for (const revision of revisions) {
+    const item = document.createElement("article");
+    const info = document.createElement("div");
+    const reason = document.createElement("span");
+    const meta = document.createElement("span");
+    const restore = document.createElement("button");
+    const createdAt = formatBackupDate(revision.createdAt);
+
+    item.className = "history-item";
+    info.className = "history-item-info";
+    reason.className = "history-item-reason";
+    reason.textContent = revision.reason;
+    meta.className = "history-item-meta";
+    meta.textContent = `${createdAt} · ${revision.books} ${revision.books === 1 ? "lorebook" : "lorebooks"} · ${revision.entries} ${revision.entries === 1 ? "entry" : "entries"}`;
+    restore.type = "button";
+    restore.className = "btn";
+    restore.dataset.revisionId = revision.id;
+    restore.setAttribute("aria-label", `Restore snapshot: ${revision.reason}, ${createdAt}`);
+    restore.textContent = "Restore";
+    info.append(reason, meta);
+    item.append(info, restore);
+    fragment.append(item);
+  }
+
+  refs.historyList.append(fragment);
+}
+
+function openHistoryDialog() {
+  setHistoryStatus("");
+  renderHistoryDialog();
+
+  if (!refs.historyDialog.open) {
+    refs.historyDialog.showModal();
+  }
+}
+
+async function handleRestoreRevision(id) {
+  const revision = getRevisions().revisions.find((item) => item.id === id);
+  const loaded = loadRevision(id);
+
+  if (!loaded.ok) {
+    refs.historyDialog.close();
+    toast(loaded.error, "error");
+    return;
+  }
+
+  refs.historyDialog.close();
+  const accepted = await confirmAction({
+    title: "Restore this revision?",
+    message: "The current project will be replaced by the snapshot. Its current state will be saved as a revision first.",
+    details: [
+      { label: "Snapshot", value: revision?.reason ?? "Revision" },
+      { label: "Created", value: formatBackupDate(revision?.createdAt) },
+      { label: "Lorebooks", value: String(loaded.project.books.length) },
+      {
+        label: "Entries",
+        value: String(loaded.project.books.reduce((total, book) => total + book.entries.length, 0))
+      }
+    ],
+    confirmLabel: "Restore revision",
+    tone: "primary"
+  });
+
+  if (!accepted) {
+    openHistoryDialog();
+    return;
+  }
+
+  const current = recordRevision("Before restoring a revision");
+
+  if (!current.ok && !current.skipped) {
+    const proceed = await confirmAction({
+      title: "Snapshot failed",
+      message: "The current project could not be saved as a revision. Restore anyway? You can undo the restore in this session.",
+      confirmLabel: "Restore anyway"
+    });
+
+    if (!proceed) {
+      openHistoryDialog();
+      return;
+    }
+  }
+
+  replaceProject(loaded.project);
+  clearSearch();
+  const sortMode = readSortMode();
+
+  if (sortMode) {
+    setSortMode(sortMode);
+  }
+
+  renderAll();
+  flushSave();
+  toast("Revision restored", "success");
 }
 
 function openExportDialog() {
@@ -581,6 +793,63 @@ function handleAddEntry() {
   scheduleSave();
 }
 
+function renderTemplateDialog() {
+  refs.templateList.replaceChildren();
+  const fragment = document.createDocumentFragment();
+
+  for (const template of ENTRY_TEMPLATES) {
+    const option = document.createElement("button");
+    const info = document.createElement("span");
+    const name = document.createElement("span");
+    const description = document.createElement("span");
+    const action = document.createElement("span");
+
+    option.type = "button";
+    option.className = "template-option";
+    option.dataset.templateId = template.id;
+    info.className = "template-option-info";
+    name.className = "template-option-name";
+    name.textContent = template.name;
+    description.className = "template-option-description";
+    description.textContent = template.description;
+    action.className = "template-option-action";
+    action.textContent = "Use";
+    info.append(name, description);
+    option.append(info, action);
+    fragment.append(option);
+  }
+
+  refs.templateList.append(fragment);
+}
+
+function openTemplateDialog() {
+  renderTemplateDialog();
+  refs.templateDialog.showModal();
+}
+
+function handleTemplatePick(templateId) {
+  const template = getEntryTemplate(templateId);
+  const patch = buildTemplatePatch(template);
+
+  if (!patch) {
+    return;
+  }
+
+  refs.templateDialog.close();
+  clearSearch();
+  const entry = addEntry(patch);
+
+  if (!entry) {
+    return;
+  }
+
+  renderAll();
+  refs.entryTitle.focus();
+  refs.entryTitle.select();
+  scheduleSave();
+  toast(`${template.name} entry added`, "success");
+}
+
 function handleUndo() {
   if (!undo()) {
     return;
@@ -756,6 +1025,7 @@ async function handleImport(file) {
     }
   }
 
+  recordRevision(`Before importing ${file.name}`);
   replaceProject(parsed.project);
 
   const sortMode = readSortMode();
@@ -767,6 +1037,7 @@ async function handleImport(file) {
   clearSearch();
   renderAll();
   flushSave();
+  recordRevision(`Imported ${file.name}`);
   toast(`Imported ${parsed.format}: ${entryCount} ${entryCount === 1 ? "entry" : "entries"}`, "success");
 
   if (backup.ok) {
@@ -843,6 +1114,25 @@ refs.entrySearch.addEventListener("keydown", (event) => {
 
 refs.addEntryBtn.addEventListener("click", handleAddEntry);
 refs.emptyAddBtn.addEventListener("click", handleAddEntry);
+refs.templateBtn.addEventListener("click", openTemplateDialog);
+
+refs.templateCloseBtn.addEventListener("click", () => {
+  refs.templateDialog.close();
+});
+
+refs.templateList.addEventListener("click", (event) => {
+  const option = event.target.closest("[data-template-id]");
+
+  if (option) {
+    handleTemplatePick(option.dataset.templateId);
+  }
+});
+
+refs.templateDialog.addEventListener("click", (event) => {
+  if (event.target === refs.templateDialog) {
+    refs.templateDialog.close();
+  }
+});
 
 refs.entryList.addEventListener("click", (event) => {
   const card = event.target.closest("[data-entry-id]");
@@ -1043,6 +1333,11 @@ refs.entryContent.addEventListener("input", (event) => {
   scheduleSave();
 });
 
+refs.entryNotes.addEventListener("input", (event) => {
+  updateActiveEntry({ notes: event.target.value });
+  scheduleSave();
+});
+
 refs.entryOrder.addEventListener("input", (event) => {
   if (event.target.value === "") {
     return;
@@ -1113,6 +1408,40 @@ refs.deleteEntryBtn.addEventListener("click", () => {
 refs.undoBtn.addEventListener("click", handleUndo);
 refs.redoBtn.addEventListener("click", handleRedo);
 
+refs.historyBtn.addEventListener("click", openHistoryDialog);
+
+refs.historySaveBtn.addEventListener("click", () => {
+  const result = recordRevision("Manual snapshot");
+
+  if (!result.ok) {
+    setHistoryStatus(result.error, "error");
+  } else if (result.skipped) {
+    setHistoryStatus(result.error);
+  } else {
+    setHistoryStatus("Snapshot saved.", "success");
+  }
+
+  renderHistoryDialog();
+});
+
+refs.historyCloseBtn.addEventListener("click", () => {
+  refs.historyDialog.close();
+});
+
+refs.historyList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-revision-id]");
+
+  if (button) {
+    handleRestoreRevision(button.dataset.revisionId);
+  }
+});
+
+refs.historyDialog.addEventListener("click", (event) => {
+  if (event.target === refs.historyDialog) {
+    refs.historyDialog.close();
+  }
+});
+
 refs.detailsToggle.addEventListener("click", () => {
   setDetailsCollapsed(!refs.detailsPanel.classList.contains("is-collapsed"));
 });
@@ -1152,6 +1481,18 @@ refs.restoreBackupBtn.addEventListener("click", () => {
 refs.exportDialog.addEventListener("click", (event) => {
   if (event.target === refs.exportDialog) {
     refs.exportDialog.close();
+  }
+});
+
+refs.overviewBtn.addEventListener("click", openOverviewDialog);
+
+refs.overviewCloseBtn.addEventListener("click", () => {
+  refs.overviewDialog.close();
+});
+
+refs.overviewDialog.addEventListener("click", (event) => {
+  if (event.target === refs.overviewDialog) {
+    refs.overviewDialog.close();
   }
 });
 
@@ -1261,6 +1602,7 @@ renderAll();
 
 if (saveProject(getState())) {
   setSaveState("saved");
+  maybeSaveRevision();
 } else {
   setSaveState("error");
 }

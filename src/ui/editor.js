@@ -1,11 +1,10 @@
 import { getActiveBook, getActiveEntry } from "../store.js";
+import { getTextStats } from "../utils.js";
 
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 export function syncEntryStats(refs, content) {
-  const chars = content.length;
-  const words = content.trim() ? content.trim().split(/\s+/).length : 0;
-  const tokens = Math.ceil(chars / 4);
+  const { chars, words, tokens } = getTextStats(content);
 
   refs.entryStatChars.textContent = numberFormatter.format(chars);
   refs.entryStatWords.textContent = numberFormatter.format(words);
@@ -34,6 +33,7 @@ export function renderEditor(refs) {
   refs.entryKeys.value = entry.keys.join(", ");
   refs.entrySecondaryKeys.value = entry.secondaryKeys.join(", ");
   refs.entryContent.value = entry.content;
+  refs.entryNotes.value = entry.notes;
   refs.entryOrder.value = String(entry.order);
   refs.entryPosition.value = entry.position;
   refs.entryProbability.value = String(entry.probability);

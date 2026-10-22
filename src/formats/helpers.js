@@ -156,6 +156,41 @@ export function createUidAllocator() {
   };
 }
 
+export function createSourceIdAllocator() {
+  const used = new Set();
+
+  return (value, fallback) => {
+    const original = String(value ?? fallback ?? "").trim() || String(fallback ?? "");
+    const parsed = Number(original);
+    let id = original;
+
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      let numeric = parsed;
+
+      while (used.has(String(numeric))) {
+        numeric += 1;
+      }
+
+      id = String(numeric);
+    } else {
+      let suffix = 2;
+
+      while (used.has(id)) {
+        id = `${original}~${suffix}`;
+        suffix += 1;
+      }
+    }
+
+    used.add(id);
+
+    return {
+      id,
+      original,
+      remapped: id !== original
+    };
+  };
+}
+
 export function resolveLorebook(input) {
   if (!isRecord(input)) {
     return null;
@@ -241,7 +276,7 @@ function wrapLabel(value) {
   return typeof value === "string" ? value : "";
 }
 
-function normalizeEntry(entry, sourceKey, formatId, warnings) {
+function normalizeEntry(entry, sourceKey, formatId, warnings, allocateSourceId) {
   const characterBookKeys = readKeyList(entry.keys);
   const secondaryCharacterBookKeys = readKeyList(entry.secondary_keys);
   const keys = characterBookKeys.length ? characterBookKeys : readKeyList(entry.key);
@@ -257,7 +292,11 @@ function normalizeEntry(entry, sourceKey, formatId, warnings) {
   const order = readNumber(entry.order, entry.insertion_order, entry.insertorder, entry.priority);
   const probability = readNumber(entry.probability);
   const useProbability = !hasOwn(entry, "useProbability") || entry.useProbability !== false;
-  const sourceId = String(entry.uid ?? entry.id ?? sourceKey);
+  const sourceId = allocateSourceId(entry.uid ?? entry.id ?? sourceKey, sourceKey);
+
+  if (sourceId.remapped) {
+    warnings.sourceIds += 1;
+  }
 
   if (rawPosition !== undefined && rawPosition !== null && !position) {
     warnings.positions += 1;
@@ -282,7 +321,8 @@ function normalizeEntry(entry, sourceKey, formatId, warnings) {
     probability: useProbability ? probability ?? 100 : 100,
     extensions: {
       source: formatId,
-      sourceId,
+      sourceId: sourceId.id,
+      ...(sourceId.remapped ? { sourceIdRemappedFrom: sourceId.original } : {}),
       sourceFields: collectSourceFields(entry)
     }
   };
@@ -310,9 +350,11 @@ export function normalizeLorebook(input, options) {
   const { book: source, wrapper } = resolved;
   const warnings = {
     positions: 0,
-    skipped: 0
+    skipped: 0,
+    sourceIds: 0
   };
   const entries = [];
+  const allocateSourceId = createSourceIdAllocator();
 
   for (const item of getEntryItems(source.entries)) {
     if (!isRecord(item.entry)) {
@@ -320,7 +362,7 @@ export function normalizeLorebook(input, options) {
       continue;
     }
 
-    entries.push(normalizeEntry(item.entry, item.sourceKey, options.formatId, warnings));
+    entries.push(normalizeEntry(item.entry, item.sourceKey, options.formatId, warnings, allocateSourceId));
   }
 
   const notes = [];
@@ -342,6 +384,10 @@ export function normalizeLorebook(input, options) {
 
   if (warnings.skipped) {
     notes.push(`${warnings.skipped} malformed ${warnings.skipped === 1 ? "entry was" : "entries were"} skipped.`);
+  }
+
+  if (warnings.sourceIds) {
+    notes.push(`${warnings.sourceIds} duplicate source ${warnings.sourceIds === 1 ? "UID was" : "UIDs were"} remapped to keep exports unique.`);
   }
 
   const extensions = {

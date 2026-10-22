@@ -36,6 +36,7 @@ export function createEntry(patch = {}) {
     keys: normalizeKeyList(patch.keys),
     secondaryKeys: normalizeKeyList(patch.secondaryKeys),
     content: typeof patch.content === "string" ? patch.content : "",
+    notes: typeof patch.notes === "string" ? patch.notes : "",
     enabled: patch.enabled !== false,
     constant: patch.constant === true,
     selective: patch.selective === true,

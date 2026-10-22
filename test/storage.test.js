@@ -4,14 +4,19 @@ import { createProject } from "../src/schema.js";
 
 const memory = new Map();
 let failWrites = false;
+let writesBeforeFailure = null;
 
 globalThis.localStorage = {
   getItem(key) {
     return memory.has(key) ? memory.get(key) : null;
   },
   setItem(key, value) {
-    if (failWrites) {
+    if (failWrites || writesBeforeFailure === 0) {
       throw new Error("Quota exceeded");
+    }
+
+    if (writesBeforeFailure !== null) {
+      writesBeforeFailure -= 1;
     }
 
     memory.set(key, String(value));
@@ -26,11 +31,15 @@ globalThis.localStorage = {
 
 const {
   BACKUP_KEY,
+  REVISION_KEY_PREFIX,
   getProjectBackupInfo,
+  getRevisions,
   loadProject,
   loadProjectBackup,
+  loadRevision,
   saveProject,
-  saveProjectBackup
+  saveProjectBackup,
+  saveRevision
 } = await import("../src/storage.js");
 
 function createState(name, title) {
@@ -99,4 +108,112 @@ test("reports backup write failures", () => {
 
   assert.equal(result.ok, false);
   assert.match(result.error, /could not be saved/);
+});
+
+test("saves, deduplicates, and restores revisions", () => {
+  memory.clear();
+  const state = createState("Revision Book", "First title");
+  const first = saveRevision(state, "Before edits");
+
+  assert.equal(first.ok, true);
+  assert.equal(first.revision.books, 1);
+  assert.equal(first.revision.entries, 1);
+
+  const duplicate = saveRevision(state, "Unchanged");
+  assert.equal(duplicate.ok, true);
+  assert.equal(duplicate.skipped, true);
+
+  state.books[0].entries[0].title = "Second title";
+  const second = saveRevision(state, "After edits");
+  assert.equal(second.ok, true);
+
+  const history = getRevisions().revisions;
+  assert.equal(history.length, 2);
+  assert.equal(history[0].reason, "After edits");
+  assert.equal(history[1].reason, "Before edits");
+
+  const restoredFirst = loadRevision(first.revision.id);
+  const restoredSecond = loadRevision(second.revision.id);
+
+  assert.equal(restoredFirst.ok, true);
+  assert.equal(restoredFirst.project.books[0].entries[0].title, "First title");
+  assert.equal(restoredSecond.ok, true);
+  assert.equal(restoredSecond.project.books[0].entries[0].title, "Second title");
+});
+
+test("keeps only the newest revisions", () => {
+  memory.clear();
+  const state = createState("Trimmed Book", "Entry 0");
+  const revisions = [];
+
+  for (let index = 0; index < 14; index += 1) {
+    state.books[0].entries[0].title = `Entry ${index}`;
+    revisions.push(saveRevision(state, `Snapshot ${index}`));
+  }
+
+  const history = getRevisions().revisions;
+
+  assert.equal(history.length, 12);
+  assert.equal(history[0].reason, "Snapshot 13");
+  assert.equal(localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions[0].revision.id}`), null);
+  assert.notEqual(localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions[2].revision.id}`), null);
+});
+
+test("reports unreadable revisions", () => {
+  memory.clear();
+  localStorage.setItem(`${REVISION_KEY_PREFIX}broken`, "{not valid json");
+
+  const result = loadRevision("broken");
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /isn't valid JSON|unreadable/);
+});
+
+test("reports revision write failures and removes partial payloads", () => {
+  memory.clear();
+  writesBeforeFailure = 1;
+  const result = saveRevision(createState("Unsaved Revision", "Entry"), "Quota test");
+  writesBeforeFailure = null;
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /could not be saved/);
+  assert.deepEqual(getRevisions().revisions, []);
+  assert.equal(
+    [...memory.keys()].some((key) => key.startsWith(REVISION_KEY_PREFIX)),
+    false
+  );
+});
+
+test("caps revision storage by size", () => {
+  memory.clear();
+  const state = createState("Large Book", "Entry");
+  state.books[0].entries[0].content = "x".repeat(260_000);
+  const revisions = [];
+
+  for (let index = 0; index < 10; index += 1) {
+    state.books[0].entries[0].title = `Entry ${index}`;
+    revisions.push(saveRevision(state, `Large ${index}`));
+  }
+
+  const history = getRevisions().revisions;
+
+  assert.equal(history.length, 5);
+  assert.equal(history[0].reason, "Large 9");
+  assert.equal(localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions[0].revision.id}`), null);
+  assert.notEqual(
+    localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions.at(-1).revision.id}`),
+    null
+  );
+});
+
+test("rejects a snapshot that exceeds the revision budget", () => {
+  memory.clear();
+  const state = createState("Huge Book", "Entry");
+  state.books[0].entries[0].content = "x".repeat(1_600_000);
+
+  const result = saveRevision(state, "Too large");
+
+  assert.equal(result.ok, false);
+  assert.match(result.error, /too large/);
+  assert.deepEqual(getRevisions().revisions, []);
 });

@@ -24,6 +24,7 @@ function matchesQuery(entry, query) {
   const haystack = [
     entry.title,
     entry.content,
+    entry.notes ?? "",
     entry.keys.join(" "),
     entry.secondaryKeys.join(" ")
   ]

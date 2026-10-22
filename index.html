@@ -46,6 +46,11 @@
               <path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0-6 6v2"/>
             </svg>
           </button>
+          <button id="history-btn" class="icon-btn" type="button" aria-label="Revision history" title="Revision history">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/>
+            </svg>
+          </button>
         </div>
         <span class="action-divider" aria-hidden="true"></span>
         <button id="import-btn" class="btn" type="button" aria-label="Import lorebook" title="Import a lorebook or Lorebook Studio project">
@@ -110,6 +115,11 @@
             <span id="entry-count" class="count" aria-live="polite">0</span>
           </div>
           <div class="entry-list-tools">
+            <button id="overview-btn" class="overview-btn" type="button" aria-label="Lorebook overview" title="Lorebook overview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+              </svg>
+            </button>
             <button id="validation-btn" class="validation-btn" type="button" title="No validation issues" aria-label="No validation issues">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 3 3.2 20h17.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/>
@@ -164,6 +174,12 @@
             </svg>
             <span>New entry</span>
             <span class="shortcut" aria-hidden="true">Alt N</span>
+          </button>
+          <button id="template-btn" class="btn btn-block" type="button" title="New entry from template">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+            <span>From template</span>
           </button>
         </div>
       </aside>
@@ -230,6 +246,14 @@
                   <label class="section-title" for="entry-content">Content</label>
                 </div>
                 <textarea id="entry-content" class="content-area" placeholder="Write the lore that gets injected into the model's context." spellcheck="true"></textarea>
+              </section>
+
+              <section class="editor-section notes-section">
+                <div class="section-head">
+                  <label class="section-title" for="entry-notes">Author notes</label>
+                  <span class="section-badge">Not injected</span>
+                </div>
+                <textarea id="entry-notes" class="notes-area" placeholder="Outline ideas, canon checks, or reminders for yourself. These notes are never included in lorebook exports." spellcheck="true"></textarea>
               </section>
             </div>
           </div>
@@ -345,6 +369,100 @@
       <div id="validation-issues" class="validation-issues"></div>
       <div class="dialog-actions">
         <button id="validation-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="history-dialog" class="dialog history-dialog" aria-labelledby="history-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">History</p>
+        <h2 id="history-title">Revision history</h2>
+        <p class="dialog-copy">Snapshots live in this browser. The newest 12 are kept within a local storage budget; older snapshots are removed automatically.</p>
+      </div>
+      <div class="history-toolbar">
+        <span id="history-count" class="history-count" aria-live="polite">0 snapshots</span>
+        <button id="history-save-btn" class="btn btn-primary" type="button">Save snapshot</button>
+      </div>
+      <p id="history-status" class="history-status" role="status" hidden></p>
+      <div id="history-list" class="history-list"></div>
+      <div class="dialog-actions">
+        <button id="history-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="overview-dialog" class="dialog overview-dialog" aria-labelledby="overview-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Overview</p>
+        <h2 id="overview-title">Lorebook overview</h2>
+        <p id="overview-summary" class="dialog-copy"></p>
+      </div>
+      <div class="overview-stats">
+        <div class="overview-stat">
+          <span id="overview-entries" class="overview-stat-value">0</span>
+          <span class="overview-stat-label">Entries</span>
+        </div>
+        <div class="overview-stat">
+          <span id="overview-enabled" class="overview-stat-value">0</span>
+          <span class="overview-stat-label">Enabled</span>
+        </div>
+        <div class="overview-stat">
+          <span id="overview-tokens" class="overview-stat-value">0</span>
+          <span class="overview-stat-label">Tokens</span>
+        </div>
+        <div class="overview-stat">
+          <span id="overview-enabled-tokens" class="overview-stat-value">0</span>
+          <span class="overview-stat-label">Enabled tokens</span>
+        </div>
+        <div class="overview-stat">
+          <span id="overview-keys" class="overview-stat-value">0</span>
+          <span class="overview-stat-label">Unique keys</span>
+        </div>
+        <div class="overview-stat">
+          <span id="overview-coverage" class="overview-stat-value">0%</span>
+          <span class="overview-stat-label">Key coverage</span>
+        </div>
+      </div>
+      <div class="overview-meter" role="img" aria-label="Trigger key coverage">
+        <span id="overview-meter-bar" class="overview-meter-bar"></span>
+      </div>
+      <dl class="overview-details">
+        <div>
+          <dt>Always on</dt>
+          <dd id="overview-always-on">0</dd>
+        </div>
+        <div>
+          <dt>Missing keys</dt>
+          <dd id="overview-missing-keys">0</dd>
+        </div>
+        <div>
+          <dt>Shared keys</dt>
+          <dd id="overview-shared-keys">0</dd>
+        </div>
+        <div>
+          <dt>Average size</dt>
+          <dd id="overview-average">~0 tokens</dd>
+        </div>
+      </dl>
+      <p id="overview-longest" class="overview-longest"></p>
+      <div class="dialog-actions">
+        <button id="overview-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="template-dialog" class="dialog template-dialog" aria-labelledby="template-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Templates</p>
+        <h2 id="template-title">Start a new entry</h2>
+        <p class="dialog-copy">Pick a structure, then replace the prompts with details from your world.</p>
+      </div>
+      <div id="template-list" class="template-list"></div>
+      <div class="dialog-actions">
+        <button id="template-close" class="btn" type="button">Cancel</button>
       </div>
     </div>
   </dialog>

@@ -41,10 +41,11 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [ ] [P1] Add bulk insertion-order changes for selected entries.
 - [x] [P1] Add sort modes: manual, title, insertion order, last edited, and enabled state.
 - [x] [P1] Add accessible reordering with `Alt+ArrowUp` and `Alt+ArrowDown` in manual order.
-- [ ] [P1] Add entry templates and a "duplicate as template" flow.
+- [x] [P1] Add built-in entry templates and a template picker.
+- [ ] [P2] Add a "duplicate as template" flow for custom reusable entries.
 - [ ] [P1] Support regex keys with validation and a plain-text fallback.
 - [ ] [P2] Add a diff view when replacing or merging imported entries.
-- [ ] [P2] Add a notes or author-only field separate from injected content.
+- [x] [P2] Add a notes or author-only field separate from injected content.
 - [ ] [P2] Add configurable word/character/token limits per entry.
 - [ ] [P2] Support markdown preview for content if the target frontends interpret it consistently.
 - [ ] [P2] Add per-entry color or tag labels for visual grouping.
@@ -54,7 +55,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 - [x] [P0] Verify exact field names and position enum values against current SillyTavern and Chub schemas.
 - [x] [P0] Preserve unknown imported fields in an extension bucket for lossless round-trips.
-- [~] [P0] Generate stable unique UIDs during export and avoid collisions during import. (collision-free export allocation complete; import collision mapping pending)
+- [x] [P0] Generate stable unique UIDs during export and avoid collisions during import.
 - [x] [P0] Report unsupported or lossy fields before import/export completes.
 - [~] [P1] Implement character book lorebook import and export. (import complete; standalone character-book export pending)
 - [x] [P1] Implement Chub lorebook import and export using real exported files.
@@ -74,14 +75,14 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [ ] [P1] Keep search results stable when the active entry is filtered out.
 - [ ] [P1] Add keyboard navigation in the entry list: arrow keys, Home, End, Enter.
 - [ ] [P1] Preserve list scroll and focus across mutations and re-renders.
-- [ ] [P2] Add a book-level overview with entry count, token totals, and key coverage.
+- [x] [P2] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] Add pinned or recent entries.
-- [ ] [P2] Add overlapping key reports and key coverage summaries.
+- [x] [P2] Add overlapping key reports and key coverage summaries.
 
 ## Context and Token Tools
 
 - [ ] [P1] Replace the character/4 estimate with a real tokenizer running in a worker.
-- [ ] [P1] Show token counts per entry, per enabled set, and per book.
+- [x] [P1] Show token counts per entry, per enabled set, and per book.
 - [ ] [P1] Add a token budget field and warnings when a book exceeds it.
 - [ ] [P1] Add a context simulation view showing likely activation order and injected text.
 - [ ] [P1] Add key collision and unreachable-entry detection.
@@ -95,7 +96,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P0] Add a local backup before destructive imports.
 - [ ] [P1] Move project storage to IndexedDB with a migration from localStorage.
 - [ ] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
-- [ ] [P1] Add revision history or automatic snapshots with restore.
+- [x] [P1] Add revision history or automatic snapshots with restore.
 - [ ] [P1] Add File System Access API support for opening and saving project files.
 - [ ] [P1] Add a periodic reminder to export a backup.
 - [ ] [P2] Add optional project import/export of the full UI state.

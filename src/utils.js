@@ -11,6 +11,16 @@ export function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+export function getTextStats(content) {
+  const text = String(content ?? "");
+  const trimmed = text.trim();
+  const chars = text.length;
+  const words = trimmed ? trimmed.split(/\s+/).length : 0;
+  const tokens = Math.ceil(chars / 4);
+
+  return { chars, words, tokens };
+}
+
 export function slugify(value, fallback = "lorebook") {
   const slug = String(value ?? "")
     .toLowerCase()

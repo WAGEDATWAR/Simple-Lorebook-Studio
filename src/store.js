@@ -354,7 +354,7 @@ export function deleteBook(id = state.activeBookId) {
   return removed;
 }
 
-export function addEntry() {
+export function addEntry(patch = {}) {
   const book = getActiveBook();
 
   if (!book) {
@@ -363,7 +363,7 @@ export function addEntry() {
 
   captureHistory("add-entry", false);
   const highestOrder = book.entries.reduce((highest, entry) => Math.max(highest, entry.order), 0);
-  const entry = createEntry({ order: highestOrder + 10 });
+  const entry = createEntry({ ...patch, order: highestOrder + 10 });
   book.entries.push(entry);
   book.updatedAt = Date.now();
   state.activeEntryId = entry.id;

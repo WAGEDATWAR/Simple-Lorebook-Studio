@@ -1,13 +1,13 @@
 # Lorebook Studio - Build Plan
 
-Status: Foundation, editor depth, and interoperability export (v0.5)
+Status: Foundation, editor depth, interoperability export, and local recovery (v0.5.x)
 Updated: 2026-10-22
 
 ## 1. Summary
 
 Lorebook Studio is a local-first web utility for writing, organizing, and exchanging lorebooks used by LLM roleplay frontends such as SillyTavern and Chub. It should feel quiet and fast: a readable dark workspace, no account, no backend, and no ceremony between opening the tool and editing an entry.
 
-The current build is a working multi-book editor with frontend-targeted exchange. It can import native projects, SillyTavern World Info, Chub lorebooks, and `lorebook_v3` character books; export the active book as native, SillyTavern World Info v2, or Chub JSON; preview imports; and create a local pre-import backup before replacement.
+The current build is a working multi-book editor with frontend-targeted exchange and local recovery. It can import native projects, SillyTavern World Info, Chub lorebooks, and `lorebook_v3` character books; export the active book as native, SillyTavern World Info v2, or Chub JSON; preview imports; create a local pre-import backup before replacement; and keep automatic local snapshots that can be restored.
 
 ## 2. Goals
 
@@ -26,7 +26,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Image generation or character card artwork editing.
 - Emulating every activation rule at runtime. The editor captures settings; consumers apply them.
 
-## 4. Current Foundation (v0.5)
+## 4. Current Foundation (v0.5.x)
 
 ### What works
 
@@ -35,16 +35,19 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Editable book descriptions stored with each lorebook and previewed in the sidebar.
 - Book-level validation for empty content, repeated or overlapping keys, missing keys on non-constant entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
-- Search across title, content, trigger keys, and secondary keys.
-- Entry fields: title, trigger keys, secondary keys, content, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
+- Reusable built-in entry templates for characters, locations, factions, items, and events.
+- Search across title, content, trigger keys, secondary keys, and author notes.
+- Entry fields: title, trigger keys, secondary keys, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
 - Live character, word, and approximate token counts.
+- A book overview with entry counts, approximate total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, and the longest entry.
 - Debounced localStorage autosave with a save-state indicator and unload flush.
 - Native project JSON import and full-project backup export.
 - Single-book export to native, SillyTavern World Info v2, and Chub JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
 - Import preview with detected format, file name, book and entry counts, and adapter warnings.
 - Automatic pre-import backup with saved backup metadata and one-click restore.
-- Collision-free numeric UID allocation on export.
+- Local revision history with manual snapshots, automatic snapshots, and restore. The newest 12 snapshots are retained within a local size budget.
+- Collision-free numeric UID allocation on export and duplicate source UID remapping on import.
 - Imported unknown book and entry fields preserved per source format and restored only when exporting back to that format.
 - Session undo/redo for edits, structural changes, bulk actions, reordering, duplication, project replacement, import, and backup restore.
 - Drag reordering in manual order plus keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown`.
@@ -62,7 +65,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Chub and SillyTavern advanced fields are preserved from matching source files but are not editable in the UI.
 - Export warnings are supported by the adapter contract, but current serializers do not yet emit lossy-field warnings.
 - Import currently replaces the project; merge and append strategies are not implemented.
-- Duplicate source UIDs within a manually edited import are not remapped before normalization.
+- Author notes stay inside native project files and are deliberately excluded from SillyTavern and Chub exports.
+- Entry templates are built-in only; custom template editing and "duplicate as template" are not implemented.
+- Revision history, pre-import backups, and projects share the localStorage quota. Revisions are capped at 12 snapshots and a total character budget, and are not included in project exports.
 - Undo history is session-only and is not restored after reload.
 - Drag reordering is limited to manual order with no active search, because reordering a filtered subset is ambiguous.
 - Token count is an estimate of `ceil(characters / 4)`, not a real tokenizer.
@@ -78,8 +83,10 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/main.js` | Event wiring, save orchestration, shortcuts, import/export flow |
 | `src/schema.js` | Canonical project/book/entry factories and position values |
 | `src/store.js` | Project state, mutation actions, undo/redo, selection, and sorting mode |
-| `src/storage.js` | Project localStorage load/save plus pre-import backup save/restore |
+| `src/storage.js` | Project localStorage load/save, pre-import backup, and revision snapshots |
 | `src/validation.js` | Book-level content, key, and insertion-order issue detection |
+| `src/overview.js` | Book metrics, token summaries, and key coverage |
+| `src/templates.js` | Built-in entry templates and patch builders |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
 | `src/sample.js` | First-run demo project |
@@ -89,9 +96,11 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/utils.js` | IDs, clamp, slugify |
 | `test/formats.test.js` | Detection, field mapping, fixture round-trips, capabilities, and native serialization tests |
 | `test/schema.test.js` | Normalization, defaults, clamping, and active-ID resolution tests |
+| `test/overview.test.js` | Book metrics, token totals, and key coverage tests |
+| `test/templates.test.js` | Built-in template integrity and independent patch tests |
 | `test/validation.test.js` | Empty content, duplicate key, missing key, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
-| `test/storage.test.js` | Project persistence and pre-import backup tests |
+| `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
 | `test/store.test.js` | History, description edits, duplication, selection, bulk actions, reordering, and sorting tests |
 | `.github/workflows/ci.yml` | CI syntax checks and unit tests on pushes and pull requests |
 | `scripts/serve.mjs` | Zero-dependency static dev server |
@@ -117,6 +126,8 @@ index.html
        -> store.js (mutations + active selection)
             -> schema.js (normalization + factories)
        -> validation.js (book-level issue checks)
+       -> overview.js (book metrics)
+       -> templates.js (built-in starting points)
        -> storage.js -> format.js -> formats/ (detection + adapters)
        -> ui/{sidebar,editor,overlays}.js (targeted rendering)
 ```
@@ -126,9 +137,10 @@ index.html
 1. User input updates the active entry or book through `store.js`.
 2. Mutating actions capture a bounded project snapshot; rapid edits to the same field group coalesce into one history step.
 3. The UI re-renders only the affected regions. Typing in the editor avoids replacing editor inputs.
-4. A 400 ms debounced save writes the normalized project to localStorage and updates the header state.
-5. Import parses, detects, and normalizes the file; the preview reports format and warnings. Confirmation creates a pre-import backup, then replaces project state, captures a history snapshot, and re-renders.
+4. A 400 ms debounced save writes the normalized project to localStorage and updates the header state. Successful saves also create an initial snapshot and at most one automatic revision every five minutes when the project has changed.
+5. Import parses, detects, and normalizes the file; the preview reports format and warnings. Confirmation snapshots and backs up the current project, then replaces state, captures a history step, and re-renders.
 6. Export chooses either the full project backup or one active-book adapter, serializes it, and downloads it. Backup restore is available from the export dialog and is undoable through project replacement.
+7. Revision restore snapshots the current project, confirms the replacement, restores the selected snapshot through the same project parser, and refreshes the editor through normal project replacement.
 
 ### Why vanilla
 
@@ -142,7 +154,7 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 
 - `formats/` adapters around the canonical schema.
 - A tokenizer worker for counted tokens.
-- IndexedDB repository for large projects and revision history.
+- IndexedDB repository for large projects and longer revision retention.
 - Virtualized entry lists for books with thousands of entries.
 - A command palette and keyboard-driven navigation layer.
 
@@ -183,6 +195,7 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 | `keys` | string[] | Primary trigger keys |
 | `secondaryKeys` | string[] | Optional secondary keys |
 | `content` | string | Injected text |
+| `notes` | string | Author-only notes; excluded from interchange exports |
 | `enabled` | boolean | Inverse of ST `disable` |
 | `constant` | boolean | Always-on entry |
 | `selective` | boolean | Selective matching flag |
@@ -330,6 +343,9 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
 - Book descriptions live in a collapsible sidebar control with a one-line preview.
 - The entry-list warning control summarizes validation issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
+- The overview control summarizes entry counts, token estimates, key coverage, and the longest entry for the active book.
+- A template picker starts a new entry from a built-in character, location, faction, item, or event structure.
+- The history control lists local snapshots with reasons and counts. Users can save a snapshot or restore one after confirmation; the current state is snapshotted first.
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering.
@@ -368,7 +384,7 @@ Exit criteria: the app loads with no build step, edits persist across reloads, n
 
 ### Phase 1 - Editor depth
 
-Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, entry ID badges, editable book descriptions, and the validation panel.
+Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, entry ID badges, editable book descriptions, author-only notes, built-in entry templates, the book overview, and the validation panel.
 
 Remaining: richer empty/search states, resizable panes, and full keyboard list navigation.
 
@@ -384,13 +400,13 @@ Exit criteria: real lorebooks from both frontends round-trip without unintended 
 
 ### Phase 3 - Context intelligence
 
-Deliverables: real tokenizer, token budget analysis, key collision detection, entry coverage report, context preview/simulation, bulk key editing, regex/advanced key support, templates.
+Deliverables: real tokenizer, token budget analysis, key collision detection, entry coverage report, context preview/simulation, bulk key editing, regex/advanced key support.
 
 Exit criteria: authors can see what a book will cost in context and catch overlapping or dead keys before play.
 
 ### Phase 4 - Scale and durability
 
-Deliverables: IndexedDB storage, project files via File System Access API, broader automatic snapshots beyond pre-import backup, revision history, large-book virtualization, import merge strategies, export diff.
+Deliverables: IndexedDB storage, project files via File System Access API, longer revision retention, large-book virtualization, import merge strategies, export diff.
 
 Exit criteria: a 2,000-entry book remains responsive and a corrupted or accidental import is recoverable.
 
@@ -405,12 +421,12 @@ Exit criteria: a new user can create and export their first lorebook without ext
 Current checks:
 
 - `npm run check` validates every JavaScript module syntactically.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, history, description edits, duplication, selection, bulk actions, reordering, sorting, schema normalization, and validation. The suite currently passes 34 tests.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, revision snapshots, history, description edits, duplication, selection, bulk actions, reordering, sorting, overview metrics, templates, schema normalization, and validation. The suite currently passes 47 tests.
 - GitHub Actions runs `npm run check` and `npm test` on pushes to `main` and pull requests.
 - The static server returns correct module content types.
-- Headless Chrome verified the export and validation dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
-- Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, and jump-to-entry.
-- Visual review covered the export dialog, validation dialog, import preview, backup metadata, mobile dialog layout, focus, contrast, and empty space.
+- Headless Chrome verified the export, validation, history, overview, and template dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
+- Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, jump-to-entry, automatic and manual snapshots, restore with a pre-restore snapshot, notes persistence, the overview metrics, and template creation.
+- Visual review covered the export dialog, validation dialog, import preview, backup metadata, overview, template picker, mobile dialog layout, focus, contrast, and empty space.
 
 Planned checks:
 
@@ -429,6 +445,7 @@ Planned checks:
 - Native JSON project container for project backups; frontend adapters for single-book exchange.
 - Single-book export is the primary authoring flow; full project export is a backup.
 - Pre-import backups use the same native project container and remain restorable from the export dialog.
+- Revision history stores up to 12 local project snapshots within a total size budget, with deduplication by content signature. Restoring snapshots the current state first.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks

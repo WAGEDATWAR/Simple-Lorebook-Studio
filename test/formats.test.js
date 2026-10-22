@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { EXPORT_FORMATS, buildExport, parseProject, serializeLorebook } from "../src/format.js";
+import { createProject } from "../src/schema.js";
 
 function readFixture(name) {
   return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
@@ -158,6 +159,49 @@ test("imports lorebook_v3 character books", () => {
   assert.equal(entry.extensions.sourceId, "3");
 });
 
+test("remaps duplicate source UIDs during import", () => {
+  const imported = parseProject(JSON.stringify({
+    name: "Duplicate UIDs",
+    entries: {
+      "1": {
+        uid: 7,
+        key: ["alpha"],
+        comment: "Alpha",
+        content: "Alpha content",
+        order: 10
+      },
+      "2": {
+        uid: 7,
+        key: ["beta"],
+        comment: "Beta",
+        content: "Beta content",
+        order: 20
+      },
+      "3": {
+        uid: 8,
+        key: ["gamma"],
+        comment: "Gamma",
+        content: "Gamma content",
+        order: 30
+      }
+    }
+  }));
+
+  assert.equal(imported.ok, true);
+  assert.deepEqual(
+    imported.project.books[0].entries.map((entry) => entry.extensions.sourceId),
+    ["7", "8", "9"]
+  );
+  assert.equal(imported.project.books[0].entries[1].extensions.sourceIdRemappedFrom, "7");
+  assert.equal(imported.project.books[0].entries[2].extensions.sourceIdRemappedFrom, "8");
+  assert.match(imported.warnings[0], /2 duplicate source UIDs were remapped/);
+
+  const exported = serializeLorebook("sillytavern", imported.project.books[0]);
+
+  assert.equal(exported.ok, true);
+  assert.deepEqual(Object.keys(exported.data.entries), ["7", "8", "9"]);
+});
+
 test("round-trips native projects with source metadata", () => {
   const imported = parseProject(JSON.stringify({
     name: "Roundtrip Book",
@@ -271,6 +315,35 @@ test("exports one active book as a native project and reimports it", () => {
   assert.equal(restored.ok, true);
   assert.equal(restored.formatId, "native");
   assert.deepEqual(canonicalProject(restored.project), canonicalProject(imported.project));
+});
+
+test("keeps author notes in native data and out of interchange exports", () => {
+  const project = createProject({
+    books: [{
+      name: "Notes Book",
+      entries: [{
+        title: "Harbor",
+        keys: ["harbor"],
+        content: "Public content",
+        notes: "Private author notes",
+        order: 10
+      }]
+    }]
+  });
+  const book = project.books[0];
+  const sillyTavern = serializeLorebook("sillytavern", book);
+  const chub = serializeLorebook("chub", book);
+  const native = serializeLorebook("native", book);
+
+  assert.equal(Object.values(sillyTavern.data.entries)[0].notes, undefined);
+  assert.equal(Object.values(chub.data.entries)[0].notes, undefined);
+  assert.equal(native.data.books[0].entries[0].notes, "Private author notes");
+  assert.equal(buildExport(project).books[0].entries[0].notes, "Private author notes");
+
+  const restored = parseProject(JSON.stringify(native.data));
+
+  assert.equal(restored.ok, true);
+  assert.equal(restored.project.books[0].entries[0].notes, "Private author notes");
 });
 
 test("publishes export capabilities for every book format", () => {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createProject } from "../src/schema.js";
 import {
+  addEntry,
   canRedo,
   canUndo,
   deleteEntries,
@@ -173,4 +174,20 @@ test("sorts entries without mutating manual order", () => {
   assert.deepEqual(sortEntries(entries, "updated").map((entry) => entry.updatedAt), [300, 200, 100]);
   assert.deepEqual(sortEntries(entries, "enabled").map((entry) => entry.enabled), [true, true, false]);
   assert.deepEqual(entries.map((entry) => entry.id), ["entry_1", "entry_2", "entry_3"]);
+});
+
+test("adds an entry from template fields with the next manual order", () => {
+  initStore(createTestProject());
+  const entry = addEntry({
+    title: "New location",
+    keys: ["location name"],
+    content: "## Overview\n",
+    order: 1
+  });
+
+  assert.equal(entry.title, "New location");
+  assert.deepEqual(entry.keys, ["location name"]);
+  assert.equal(entry.order, 40);
+  assert.equal(getActiveEntry().id, entry.id);
+  assert.equal(canUndo(), true);
 });
