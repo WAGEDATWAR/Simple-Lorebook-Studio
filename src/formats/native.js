@@ -1,9 +1,27 @@
-import { APP_ID, createProject } from "../schema.js";
+import { APP_ID, SCHEMA_VERSION, createProject } from "../schema.js";
 import { isRecord } from "./helpers.js";
+
+function createBookSnapshot(book) {
+  return {
+    ...book,
+    entries: book.entries.map((entry) => ({
+      ...entry,
+      keys: [...entry.keys],
+      secondaryKeys: [...entry.secondaryKeys]
+    }))
+  };
+}
 
 export const nativeAdapter = {
   id: "native",
   label: "Lorebook Studio project",
+  exportLabel: "Lorebook Studio book",
+  exportDescription: "A single-book Lorebook Studio file that keeps every canonical field.",
+  exportFilenameSuffix: "lorebook-studio",
+  capabilities: {
+    bookExport: true,
+    preservesUnknownFields: true
+  },
   detect(input) {
     if (!isRecord(input)) {
       return 0;
@@ -28,6 +46,26 @@ export const nativeAdapter = {
       ok: true,
       project: createProject(input),
       format: this.label,
+      warnings: []
+    };
+  },
+  serialize(book) {
+    if (!isRecord(book) || !Array.isArray(book.entries)) {
+      return { ok: false, error: "There is no lorebook to export." };
+    }
+
+    const snapshot = createBookSnapshot(book);
+
+    return {
+      ok: true,
+      data: {
+        app: APP_ID,
+        version: SCHEMA_VERSION,
+        exportedAt: new Date().toISOString(),
+        activeBookId: snapshot.id,
+        activeEntryId: snapshot.entries[0]?.id ?? null,
+        books: [snapshot]
+      },
       warnings: []
     };
   }

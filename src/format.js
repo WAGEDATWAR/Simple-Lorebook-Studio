@@ -1,5 +1,7 @@
-import { parseLorebookData } from "./formats/index.js";
+import { EXPORT_FORMATS, parseLorebookData, serializeLorebook } from "./formats/index.js";
 import { APP_ID, SCHEMA_VERSION } from "./schema.js";
+
+export { EXPORT_FORMATS, serializeLorebook };
 
 export function parseProject(text, options = {}) {
   let data;

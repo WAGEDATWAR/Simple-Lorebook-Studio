@@ -23,12 +23,12 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 ## Next Up
 
-- [~] [P0] Build the format adapter layer with `detect`, `parse`, `serialize`, and warnings. (detect/parse complete; serializers pending)
-- [~] [P0] Implement SillyTavern World Info v2 import and export. (import complete)
-- [ ] [P0] Add real fixture tests that export, re-import, and compare canonical snapshots.
-- [ ] [P0] Add single-book export alongside the whole-project backup.
-- [ ] [P0] Add an import preview stage and automatic pre-import backup.
-- [~] [P1] Add automated tests for schema, store actions, and native format handling. (format and store tests complete; schema tests pending)
+- [x] [P0] Build the format adapter layer with `detect`, `parse`, `serialize`, and warnings.
+- [x] [P0] Implement SillyTavern World Info v2 import and export.
+- [x] [P0] Add real fixture tests that export, re-import, and compare canonical snapshots.
+- [x] [P0] Add single-book export alongside the whole-project backup.
+- [x] [P0] Add an import preview stage and automatic pre-import backup.
+- [~] [P1] Add automated tests for schema, store actions, and native format handling. (format round-trip and store tests complete; schema tests pending)
 - [x] [P1] Add entry duplication and reordering.
 - [x] [P1] Add undo/redo for edits and structural changes.
 - [ ] [P1] Expose the stored book description in the interface.
@@ -54,14 +54,14 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 - [x] [P0] Verify exact field names and position enum values against current SillyTavern and Chub schemas.
 - [x] [P0] Preserve unknown imported fields in an extension bucket for lossless round-trips.
-- [ ] [P0] Generate stable unique UIDs during export and avoid collisions during import.
-- [ ] [P0] Report unsupported or lossy fields before import/export completes.
-- [~] [P1] Implement character book lorebook import and export. (import complete)
-- [~] [P1] Implement Chub lorebook import and export using real exported files. (import complete)
+- [~] [P0] Generate stable unique UIDs during export and avoid collisions during import. (collision-free export allocation complete; import collision mapping pending)
+- [x] [P0] Report unsupported or lossy fields before import/export completes.
+- [~] [P1] Implement character book lorebook import and export. (import complete; standalone character-book export pending)
+- [x] [P1] Implement Chub lorebook import and export using real exported files.
 - [x] [P1] Add format detection and a clear "unsupported file" message.
 - [ ] [P1] Add import merge strategies: replace, append, merge by title.
-- [ ] [P1] Preserve advanced SillyTavern fields such as recursion, depth, role, groups, sticky, cooldown, and scan depth.
-- [ ] [P1] Add filename conventions for book exports and project backups.
+- [x] [P1] Preserve advanced SillyTavern fields such as recursion, depth, role, groups, sticky, cooldown, and scan depth.
+- [x] [P1] Add filename conventions for book exports and project backups.
 - [ ] [P2] Support character card containers (PNG/CHARX) and embedded character books.
 - [ ] [P2] Add JSON/YAML plain-export options for scripting.
 - [ ] [P2] Add a schema reference page generated from the canonical model.
@@ -92,7 +92,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 ## Data and Persistence
 
-- [ ] [P0] Add a local backup before destructive imports.
+- [x] [P0] Add a local backup before destructive imports.
 - [ ] [P1] Move project storage to IndexedDB with a migration from localStorage.
 - [ ] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
 - [ ] [P1] Add revision history or automatic snapshots with restore.
@@ -123,7 +123,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 ## Engineering and QA
 
 - [x] [P0] Choose and configure a test runner using the built-in Node test runner.
-- [~] [P0] Add unit tests for normalization, mutations, native import/export, and format detection. (format, import, store mutation, and sorting tests complete)
+- [~] [P0] Add unit tests for normalization, mutations, native import/export, and format detection. (format round-trip, import, store mutation, sorting, and backup persistence tests complete; schema tests pending)
 - [ ] [P0] Add browser end-to-end tests for CRUD, autosave, search, import/export, shortcuts, and dialogs.
 - [ ] [P1] Add linting and formatting configuration.
 - [ ] [P1] Add CI running syntax checks, unit tests, and end-to-end tests.

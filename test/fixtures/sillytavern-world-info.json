@@ -1,0 +1,74 @@
+{
+  "name": "Harbor Secrets",
+  "description": "A fixture covering common SillyTavern World Info fields and advanced entry data.",
+  "scan_depth": 6,
+  "token_budget": 900,
+  "recursive_scanning": true,
+  "extensions": {
+    "world": "harbor"
+  },
+  "entries": {
+    "3": {
+      "uid": 3,
+      "key": ["harbor", "docks"],
+      "keysecondary": ["night"],
+      "comment": "Harbor at Night",
+      "content": "The harbor is quiet after midnight, except for the lanterns along the west pier.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 1,
+      "order": 25,
+      "position": 1,
+      "disable": false,
+      "probability": 65,
+      "useProbability": true,
+      "caseSensitive": true,
+      "matchWholeWords": true,
+      "depth": 8,
+      "role": 2,
+      "sticky": 3,
+      "extensions": {
+        "depth": 8,
+        "role": 2
+      }
+    },
+    "7": {
+      "uid": 7,
+      "key": ["lighthouse"],
+      "keysecondary": [],
+      "comment": "Lighthouse Keeper",
+      "content": "The keeper logs every ship that passes the reef.",
+      "constant": true,
+      "selective": false,
+      "selectiveLogic": 0,
+      "order": 10,
+      "position": 4,
+      "disable": true,
+      "probability": 100,
+      "useProbability": false,
+      "caseSensitive": false,
+      "matchWholeWords": false,
+      "depth": 2,
+      "role": 0,
+      "extensions": {
+        "depth": 2
+      }
+    },
+    "11": {
+      "uid": 11,
+      "key": ["smuggler", "crate"],
+      "keysecondary": ["password"],
+      "comment": "Smuggler Password",
+      "content": "The crate opens for anyone who says the tide is early.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "order": 40,
+      "position": 2,
+      "disable": false,
+      "caseSensitive": false,
+      "matchWholeWords": true,
+      "extensions": {}
+    }
+  }
+}

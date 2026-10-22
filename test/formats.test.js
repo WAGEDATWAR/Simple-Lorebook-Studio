@@ -1,6 +1,33 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { buildExport, parseProject } from "../src/format.js";
+import { EXPORT_FORMATS, buildExport, parseProject, serializeLorebook } from "../src/format.js";
+
+function readFixture(name) {
+  return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), "utf8");
+}
+
+function canonicalProject(project) {
+  return project.books.map((book) => ({
+    name: book.name,
+    description: book.description,
+    entries: book.entries.map((entry) => ({
+      title: entry.title,
+      keys: entry.keys,
+      secondaryKeys: entry.secondaryKeys,
+      content: entry.content,
+      enabled: entry.enabled,
+      constant: entry.constant,
+      selective: entry.selective,
+      caseSensitive: entry.caseSensitive,
+      matchWholeWords: entry.matchWholeWords,
+      order: entry.order,
+      position: entry.position,
+      probability: entry.probability,
+      sourceId: entry.extensions.sourceId
+    }))
+  }));
+}
 
 test("imports dual-written Chub entries", () => {
   const result = parseProject(JSON.stringify({
@@ -159,6 +186,103 @@ test("round-trips native projects with source metadata", () => {
   assert.equal(restored.format, "Lorebook Studio project");
   assert.deepEqual(restored.project.books[0].extensions, imported.project.books[0].extensions);
   assert.deepEqual(restored.project.books[0].entries[0].extensions, imported.project.books[0].entries[0].extensions);
+});
+
+test("round-trips a SillyTavern World Info fixture", () => {
+  const imported = parseProject(readFixture("sillytavern-world-info.json"), {
+    filename: "sillytavern-world-info.json"
+  });
+
+  assert.equal(imported.ok, true);
+  assert.equal(imported.formatId, "sillytavern");
+  assert.equal(imported.capabilities.bookExport, true);
+
+  const book = imported.project.books[0];
+  const exported = serializeLorebook("sillytavern", book);
+
+  assert.equal(exported.ok, true);
+  assert.equal(exported.filename, "harbor-secrets-sillytavern-world-info.json");
+  assert.equal(exported.data.entries["3"].role, 2);
+  assert.equal(exported.data.entries["3"].sticky, 3);
+  assert.equal(exported.data.entries["3"].depth, 8);
+  assert.equal(exported.data.entries["3"].useProbability, true);
+  assert.equal(exported.data.entries["11"].position, 2);
+  assert.equal(exported.data.entries["7"].disable, true);
+
+  const restored = parseProject(JSON.stringify(exported.data), {
+    filename: exported.filename
+  });
+
+  assert.equal(restored.ok, true);
+  assert.equal(restored.formatId, "sillytavern");
+  assert.deepEqual(canonicalProject(restored.project), canonicalProject(imported.project));
+  assert.deepEqual(
+    restored.project.books[0].extensions.sourceFields.extensions,
+    imported.project.books[0].extensions.sourceFields.extensions
+  );
+});
+
+test("round-trips a Chub lorebook fixture with dual fields", () => {
+  const imported = parseProject(readFixture("chub-lorebook.json"), {
+    filename: "chub-lorebook.json"
+  });
+
+  assert.equal(imported.ok, true);
+  assert.equal(imported.formatId, "chub");
+
+  const book = imported.project.books[0];
+  const exported = serializeLorebook("chub", book);
+
+  assert.equal(exported.ok, true);
+  assert.equal(exported.filename, "dual-field-lorebook-chub-lorebook.json");
+  assert.deepEqual(exported.data.entries["1"].keys, ["alpha"]);
+  assert.deepEqual(exported.data.entries["1"].secondary_keys, ["beta"]);
+  assert.equal(exported.data.entries["1"].insertion_order, 15);
+  assert.equal(exported.data.entries["1"].priority, 8);
+  assert.equal(exported.data.entries["1"].match_whole_words, true);
+  assert.equal(exported.data.entries["5"].enabled, false);
+
+  const restored = parseProject(JSON.stringify(exported.data), {
+    filename: exported.filename
+  });
+
+  assert.equal(restored.ok, true);
+  assert.equal(restored.formatId, "chub");
+  assert.deepEqual(canonicalProject(restored.project), canonicalProject(imported.project));
+  assert.equal(restored.project.books[0].entries[0].extensions.sourceFields.priority, 8);
+  assert.deepEqual(
+    restored.project.books[0].extensions.sourceFields.extensions,
+    imported.project.books[0].extensions.sourceFields.extensions
+  );
+});
+
+test("exports one active book as a native project and reimports it", () => {
+  const imported = parseProject(readFixture("sillytavern-world-info.json"));
+  const book = imported.project.books[0];
+  const exported = serializeLorebook("native", book);
+
+  assert.equal(exported.ok, true);
+  assert.equal(exported.filename, "harbor-secrets-lorebook-studio.json");
+  assert.equal(exported.data.books.length, 1);
+  assert.equal(exported.data.books[0].name, "Harbor Secrets");
+
+  const restored = parseProject(JSON.stringify(exported.data));
+
+  assert.equal(restored.ok, true);
+  assert.equal(restored.formatId, "native");
+  assert.deepEqual(canonicalProject(restored.project), canonicalProject(imported.project));
+});
+
+test("publishes export capabilities for every book format", () => {
+  assert.deepEqual(
+    EXPORT_FORMATS.map((format) => format.id),
+    ["native", "chub", "sillytavern"]
+  );
+
+  for (const format of EXPORT_FORMATS) {
+    assert.equal(format.capabilities.bookExport, true);
+    assert.equal(format.capabilities.preservesUnknownFields, true);
+  }
 });
 
 test("rejects unrelated JSON with a clear message", () => {

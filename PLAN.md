@@ -1,13 +1,13 @@
 # Lorebook Studio - Build Plan
 
-Status: Foundation, import adapters, and core authoring controls (v0.3)
-Updated: 2026-10-21
+Status: Foundation, editor depth, and interoperability export (v0.4)
+Updated: 2026-10-22
 
 ## 1. Summary
 
 Lorebook Studio is a local-first web utility for writing, organizing, and exchanging lorebooks used by LLM roleplay frontends such as SillyTavern and Chub. It should feel quiet and fast: a readable dark workspace, no account, no backend, and no ceremony between opening the tool and editing an entry.
 
-The current build is the application skeleton plus a working native editor. It can create lorebooks and entries, edit the core fields, autosave to the browser, and move projects through a native JSON format. Frontend-specific formats and deeper authoring features are intentionally deferred to the roadmap below.
+The current build is a working multi-book editor with frontend-targeted exchange. It can import native projects, SillyTavern World Info, Chub lorebooks, and `lorebook_v3` character books; export the active book as native, SillyTavern World Info v2, or Chub JSON; preview imports; and create a local pre-import backup before replacement.
 
 ## 2. Goals
 
@@ -26,7 +26,7 @@ The current build is the application skeleton plus a working native editor. It c
 - Image generation or character card artwork editing.
 - Emulating every activation rule at runtime. The editor captures settings; consumers apply them.
 
-## 4. Current Foundation (v0.3)
+## 4. Current Foundation (v0.4)
 
 ### What works
 
@@ -37,9 +37,14 @@ The current build is the application skeleton plus a working native editor. It c
 - Entry fields: title, trigger keys, secondary keys, content, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
 - Live character, word, and approximate token counts.
 - Debounced localStorage autosave with a save-state indicator and unload flush.
-- Native project JSON import and export.
+- Native project JSON import and full-project backup export.
+- Single-book export to native, SillyTavern World Info v2, and Chub JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
-- Session undo/redo for edits, structural changes, bulk actions, reordering, duplication, and project replacement.
+- Import preview with detected format, file name, book and entry counts, and adapter warnings.
+- Automatic pre-import backup with saved backup metadata and one-click restore.
+- Collision-free numeric UID allocation on export.
+- Imported unknown book and entry fields preserved per source format and restored only when exporting back to that format.
+- Session undo/redo for edits, structural changes, bulk actions, reordering, duplication, project replacement, import, and backup restore.
 - Drag reordering in manual order plus keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown`.
 - Multi-select with `Ctrl/Cmd+click` and `Shift+click`, plus bulk enable, disable, delete, and clear actions.
 - Sort modes: manual order, title, insertion order, last edited, and enabled first. The preference persists locally.
@@ -51,14 +56,16 @@ The current build is the application skeleton plus a working native editor. It c
 
 ### Known gaps
 
-- Chub and SillyTavern adapters currently import only; frontend-targeted export, import preview, and persistent fixture tests are still pending.
-- Character card containers, standalone character-book wrappers beyond `lorebook_v3`, and RisuAI-native exports are not supported yet.
+- Character card containers, standalone character-book export, Chub wrapper variants beyond `lorebook_v3` import, and RisuAI-native exports are not supported yet.
+- Chub and SillyTavern advanced fields are preserved from matching source files but are not editable in the UI.
+- Export warnings are supported by the adapter contract, but current serializers do not yet emit lossy-field warnings.
+- Import currently replaces the project; merge and append strategies are not implemented.
+- Duplicate source UIDs within a manually edited import are not remapped before normalization.
 - Undo history is session-only and is not restored after reload.
 - Drag reordering is limited to manual order with no active search, because reordering a filtered subset is ambiguous.
-- No export targeting a single lorebook. Export currently serializes the whole native project.
 - No book description editor, tags, folders, or validation panel.
 - Token count is an estimate of `ceil(characters / 4)`, not a real tokenizer.
-- No lint configuration or automated browser test suite yet.
+- No lint configuration or committed automated browser test suite yet.
 - The sample project appears on first run; there is no onboarding flow or sample reset.
 
 ### File map
@@ -70,15 +77,17 @@ The current build is the application skeleton plus a working native editor. It c
 | `src/main.js` | Event wiring, save orchestration, shortcuts, import/export flow |
 | `src/schema.js` | Canonical project/book/entry factories and position values |
 | `src/store.js` | Project state, mutation actions, undo/redo, selection, and sorting mode |
-| `src/storage.js` | localStorage load/save |
-| `src/format.js` | Import entry point, native serialization, download helper |
-| `src/formats/` | Format detection and Chub, SillyTavern, and native adapters |
+| `src/storage.js` | Project localStorage load/save plus pre-import backup save/restore |
+| `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
+| `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
 | `src/sample.js` | First-run demo project |
 | `src/ui/sidebar.js` | Book switcher, search, sorting, selected/drag entry rendering |
 | `src/ui/editor.js` | Editor population and statistics |
-| `src/ui/overlays.js` | Confirmation dialog and toasts |
+| `src/ui/overlays.js` | Confirmation dialog with details/warnings and toasts |
 | `src/utils.js` | IDs, clamp, slugify |
-| `test/formats.test.js` | Import detection, field mapping, and native round-trip tests |
+| `test/formats.test.js` | Detection, field mapping, fixture round-trips, capabilities, and native serialization tests |
+| `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
+| `test/storage.test.js` | Project persistence and pre-import backup tests |
 | `test/store.test.js` | History, duplication, selection, bulk actions, reordering, and sorting tests |
 | `scripts/serve.mjs` | Zero-dependency static dev server |
 | `package.json` | Dev/check/test scripts |
@@ -112,8 +121,8 @@ index.html
 2. Mutating actions capture a bounded project snapshot; rapid edits to the same field group coalesce into one history step.
 3. The UI re-renders only the affected regions. Typing in the editor avoids replacing editor inputs.
 4. A 400 ms debounced save writes the normalized project to localStorage and updates the header state.
-5. Import parses and normalizes the file into the canonical schema, replaces project state, captures a history snapshot, and re-renders.
-6. Export reads state, builds a native payload, and downloads it.
+5. Import parses, detects, and normalizes the file; the preview reports format and warnings. Confirmation creates a pre-import backup, then replaces project state, captures a history snapshot, and re-renders.
+6. Export chooses either the full project backup or one active-book adapter, serializes it, and downloads it. Backup restore is available from the export dialog and is undoable through project replacement.
 
 ### Why vanilla
 
@@ -183,7 +192,7 @@ Internal names are intentionally readable and stable. Frontend quirks and numeri
 
 ### Native format
 
-The current export is a Lorebook Studio project:
+The full-project backup uses a Lorebook Studio container:
 
 ```text
 {
@@ -196,67 +205,65 @@ The current export is a Lorebook Studio project:
 }
 ```
 
-It is not a SillyTavern or Chub file. Labels and documentation must stay explicit about that until adapters ship.
+Single-book native export uses the same container with one book and normalized active IDs. SillyTavern and Chub exports are standalone exchange files rather than native containers. Labels and documentation must stay explicit about the selected target.
 
 ## 7. Format Interoperability Plan
 
-### Target formats
+### Implemented targets
 
-1. SillyTavern World Info JSON (standalone lorebook).
-2. Character book data embedded in SillyTavern character cards, including PNG/JSON/CHARX containers as needed.
-3. Chub lorebook import/export, verified against real Chub files rather than assumptions.
-4. Plain JSON/YAML for scripting and backups.
+1. SillyTavern World Info JSON (standalone lorebook import and export).
+2. Chub lorebook import and export.
+3. `lorebook_v3` character-book import.
+4. Native Lorebook Studio project backup plus single-book native export.
 
 ### Adapter contract
 
-Each adapter should provide:
+Each adapter provides:
 
 - `detect(input)` - confidence that a parsed file belongs to this format.
 - `parse(input)` - normalize into the canonical project/book/entry shape.
-- `serialize(project, options)` - produce a valid target payload.
-- `capabilities` - supported fields and lossy mappings.
-- `warnings` - actionable notes when data cannot round-trip.
+- `serialize(book)` - produce a valid single-book target payload.
+- `capabilities` - declared import/export support and unknown-field preservation.
+- `warnings` - actionable notes when data cannot round-trip, surfaced in import preview or export toasts.
 
 Import pipeline:
 
 ```text
-read file -> JSON parse -> detect -> adapter normalize -> validate -> preview/confirm -> canonical state
+read file -> JSON parse -> detect -> adapter normalize -> validate -> preview/confirm -> backup -> canonical state
 ```
 
 Export pipeline:
 
 ```text
-canonical state -> choose target -> map fields -> validate -> serialize -> download
+canonical state -> choose project or active book -> map fields -> validate -> serialize -> download
 ```
 
-### Field mapping sketch
+### Field mapping
 
-Verify names and enum values against each frontend's current schema before implementation.
-
-| Canonical | SillyTavern World Info | Character book |
+| Canonical | SillyTavern World Info | Chub |
 | --- | --- | --- |
-| `title` | `comment` | `name` / `comment` |
-| `keys` | `key` | `keys` |
-| `secondaryKeys` | `keysecondary` | `secondary_keys` |
+| `title` | `comment` | `comment` + `name` |
+| `keys` | `key` | `key` + `keys` |
+| `secondaryKeys` | `keysecondary` | `keysecondary` + `secondary_keys` |
 | `content` | `content` | `content` |
-| `enabled` | inverse of `disable` | `enabled` |
+| `enabled` | inverse of `disable` | `disable` + `enabled` |
 | `constant` | `constant` | `constant` |
 | `selective` | `selective` | `selective` |
-| `order` | `order` | `insertion_order` |
-| `position` | numeric `position` | numeric/string mapping |
-| `probability` | `probability` + `useProbability` | adapter-defined |
-| `caseSensitive` | `caseSensitive` | `case_sensitive` |
-| `matchWholeWords` | `matchWholeWords` | adapter-defined |
+| `order` | `order` | `order` + `insertion_order` |
+| `position` | numeric `position` | numeric `position` |
+| `probability` | `probability` + `useProbability` | `probability` + `useProbability` |
+| `caseSensitive` | `caseSensitive` | `caseSensitive` + `case_sensitive` |
+| `matchWholeWords` | `matchWholeWords` | `matchWholeWords` + `match_whole_words` |
 
-Advanced ST fields such as depth, role, groups, recursion, sticky, cooldown, and scan depth will need a future mapping plan and UI. Preserve unknown imported fields in an extension bucket when round-trip fidelity becomes a requirement.
+Exported UIDs are allocated without collisions while retaining numeric source IDs when available. Unknown source fields are preserved in the canonical extension bucket and restored only when exporting back to the same source format. Advanced SillyTavern fields such as depth, role, groups, recursion, sticky, cooldown, and scan depth remain preserved rather than editable.
 
 ### Round-trip requirements
 
-- Export, re-import, and compare canonical snapshots.
-- Fixture tests for multiple real files from each supported frontend.
-- Clear preview before destructive replacement.
-- Warn on unsupported features rather than silently dropping them.
-- Support single-book export as the primary flow; project bundles are secondary.
+- Export, re-import, and compare canonical snapshots for realistic SillyTavern and Chub fixtures.
+- Keep format detection and unknown-field restoration covered by tests.
+- Preview format, counts, and warnings before destructive replacement.
+- Create a local pre-import backup before replacement, with recoverability if backup storage fails.
+- Treat single-book export as the primary flow and project bundles as backups.
 
 ## 8. UX and Visual Design
 
@@ -313,6 +320,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 
 - Autosave is the default; the header communicates Saving, Saved, or Unsaved.
 - Destructive actions require confirmation; ordinary actions do not.
+- Import confirmation is a preview with format, counts, and warnings. It creates a pre-import backup before replacement and leaves backup restore one click away in the export dialog.
+- The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering.
@@ -339,7 +348,7 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - 900 px and below: compact topbar, brand text hidden.
 - 780 px and below: stacked sidebar (40 vh) above editor.
 - 600 px and below: single-column fields, compact icon-only import/export.
-- 430 px and below: save label hidden in the topbar.
+- 430 px and below: save label hidden in the topbar, compact dialog padding, and hidden export-format meta pills.
 
 ## 9. Roadmap
 
@@ -353,13 +362,15 @@ Exit criteria: the app loads with no build step, edits persist across reloads, n
 
 Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, and entry ID badges.
 
-Remaining: book description editing, validation panel, richer empty/search states, resizable panes, full keyboard list navigation, and single-book native export.
+Remaining: book description editing, validation panel, richer empty/search states, resizable panes, and full keyboard list navigation.
 
 Exit criteria: a 100-entry book can be maintained without leaving the keyboard, and common editing mistakes are recoverable.
 
 ### Phase 2 - Interoperability
 
-Deliverables: adapter architecture, SillyTavern World Info import/export, character book support, Chub support, import preview, field-level warnings, round-trip fixture suite, single-book and bundle export options.
+Completed: adapter contract with capabilities, SillyTavern World Info import/export, Chub import/export, `lorebook_v3` character-book import, collision-free UID export, import preview, field-level warnings, pre-import backup/restore, round-trip fixtures, and single-book/project export choices.
+
+Remaining: standalone character-book export, character card containers, broader Chub wrapper coverage, and merge strategies.
 
 Exit criteria: real lorebooks from both frontends round-trip without unintended data loss, and unsupported fields are reported before import.
 
@@ -371,7 +382,7 @@ Exit criteria: authors can see what a book will cost in context and catch overla
 
 ### Phase 4 - Scale and durability
 
-Deliverables: IndexedDB storage, project files via File System Access API, automatic backups, revision history, large-book virtualization, import merge strategies, export diff.
+Deliverables: IndexedDB storage, project files via File System Access API, broader automatic snapshots beyond pre-import backup, revision history, large-book virtualization, import merge strategies, export diff.
 
 Exit criteria: a 2,000-entry book remains responsive and a corrupted or accidental import is recoverable.
 
@@ -386,16 +397,16 @@ Exit criteria: a new user can create and export their first lorebook without ext
 Current checks:
 
 - `npm run check` validates every JavaScript module syntactically.
-- `npm test` covers Chub, SillyTavern, character-book import, native round-trips, unsupported files, history, duplication, selection, bulk actions, reordering, and sorting.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, history, duplication, selection, bulk actions, reordering, and sorting. The suite currently passes 20 tests.
 - The static server returns correct module content types.
-- Headless Chrome verified desktop and 390 px layouts with no horizontal overflow.
-- Browser session checks covered sorting, range and toggle selection, bulk disable/delete, duplication, drag reorder, keyboard reorder, undo/redo, and dialog confirmation.
-- Visual review covered the populated editor, selected and dragged card states, bulk bar, mobile stacking, focus, contrast, and empty space.
+- Headless Chrome verified the export dialog at 1440 px and 390 px with no horizontal overflow.
+- Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, and undoable project replacement.
+- Visual review covered the export dialog, import preview, backup metadata, mobile dialog layout, focus, contrast, and empty space.
 
 Planned checks:
 
 - Schema normalization and validation tests.
-- Adapter fixture tests against real files from each supported frontend.
+- Broader Chub fixture coverage against additional real exported files.
 - A committed browser end-to-end test suite for CRUD, autosave, import/export, shortcuts, and dialogs.
 - Automated accessibility scan plus manual screen-reader pass.
 - Performance target: smooth interaction with 1,000 entries and 500,000 characters in a project.
@@ -407,7 +418,9 @@ Planned checks:
 - Local-first, static hosting, no backend.
 - Native canonical schema as the hub; formats are adapters.
 - Dark-only v1. Light theme waits until tokens and components are stable.
-- Native JSON project container for backups until frontend adapters exist.
+- Native JSON project container for project backups; frontend adapters for single-book exchange.
+- Single-book export is the primary authoring flow; full project export is a backup.
+- Pre-import backups use the same native project container and remain restorable from the export dialog.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks
@@ -423,11 +436,11 @@ Planned checks:
 
 ## 12. Immediate Next Steps
 
-1. Add SillyTavern World Info and Chub export targets, then lock them down with round-trip fixtures.
-2. Add single-book export and import preview before replacement.
-3. Add full keyboard navigation, book description editing, and a validation panel.
+1. Add book description editing and a validation panel for empty content, duplicate keys, missing keys, and order collisions.
+2. Add standalone character-book export and broaden Chub fixture coverage.
+3. Add full keyboard navigation and import merge strategies.
 4. Extend the test suite to schema validation and committed browser end-to-end coverage.
-5. Add a pre-import backup and IndexedDB migration path before supporting very large books.
+5. Move storage to IndexedDB and add broader automatic snapshots for large projects.
 
 ## 13. Open Questions
 

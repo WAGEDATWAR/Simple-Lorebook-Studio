@@ -1,11 +1,49 @@
 const dialog = document.querySelector("#confirm-dialog");
 const titleElement = document.querySelector("#confirm-title");
 const messageElement = document.querySelector("#confirm-message");
+const detailsElement = document.querySelector("#confirm-details");
+const detailList = document.querySelector("#confirm-detail-list");
+const warningsElement = document.querySelector("#confirm-warnings");
 const acceptButton = document.querySelector("#confirm-accept");
 const cancelButton = document.querySelector("#confirm-cancel");
 const toastStack = document.querySelector("#toast-stack");
 
 let settleConfirmation = null;
+
+function renderConfirmationDetails(details, warnings) {
+  if (!detailsElement || !detailList || !warningsElement) {
+    return;
+  }
+
+  detailList.replaceChildren();
+  warningsElement.replaceChildren();
+
+  for (const detail of details) {
+    if (!detail || detail.value === undefined || detail.value === null || detail.value === "") {
+      continue;
+    }
+
+    const term = document.createElement("dt");
+    const value = document.createElement("dd");
+    term.textContent = String(detail.label || "");
+    value.textContent = String(detail.value);
+    detailList.append(term, value);
+  }
+
+  for (const warning of warnings) {
+    if (!warning) {
+      continue;
+    }
+
+    const item = document.createElement("p");
+    item.className = "confirm-warning";
+    item.textContent = String(warning);
+    warningsElement.append(item);
+  }
+
+  warningsElement.hidden = !warningsElement.childElementCount;
+  detailsElement.hidden = !detailList.childElementCount && warningsElement.hidden;
+}
 
 if (dialog) {
   dialog.addEventListener("close", () => {
@@ -32,6 +70,8 @@ if (dialog) {
 export function confirmAction({
   title = "Confirm action",
   message = "",
+  details = [],
+  warnings = [],
   confirmLabel = "Confirm",
   tone = "danger"
 } = {}) {
@@ -47,6 +87,7 @@ export function confirmAction({
 
   titleElement.textContent = title;
   messageElement.textContent = message;
+  renderConfirmationDetails(details, warnings);
   acceptButton.textContent = confirmLabel;
   acceptButton.className = tone === "primary" ? "btn btn-primary" : "btn btn-danger";
   dialog.returnValue = "cancel";

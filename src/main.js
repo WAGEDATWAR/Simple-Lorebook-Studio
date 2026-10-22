@@ -1,4 +1,10 @@
-import { buildExport, downloadJson, parseProject } from "./format.js";
+import {
+  EXPORT_FORMATS,
+  buildExport,
+  downloadJson,
+  parseProject,
+  serializeLorebook
+} from "./format.js";
 import {
   addBook,
   addEntry,
@@ -29,7 +35,13 @@ import {
   undo,
   updateActiveEntry
 } from "./store.js";
-import { loadProject, saveProject } from "./storage.js";
+import {
+  getProjectBackupInfo,
+  loadProject,
+  loadProjectBackup,
+  saveProject,
+  saveProjectBackup
+} from "./storage.js";
 import { renderEditor, syncEntryStats } from "./ui/editor.js";
 import { confirmAction, toast } from "./ui/overlays.js";
 import { renderSidebar } from "./ui/sidebar.js";
@@ -43,6 +55,12 @@ const refs = {
   importBtn: document.querySelector("#import-btn"),
   exportBtn: document.querySelector("#export-btn"),
   importInput: document.querySelector("#import-input"),
+  exportDialog: document.querySelector("#export-dialog"),
+  exportBookName: document.querySelector("#export-book-name"),
+  exportOptions: document.querySelector("#export-options"),
+  exportCancelBtn: document.querySelector("#export-cancel"),
+  backupStatus: document.querySelector("#backup-status"),
+  restoreBackupBtn: document.querySelector("#restore-backup-btn"),
   bookSelect: document.querySelector("#book-select"),
   newBookBtn: document.querySelector("#new-book-btn"),
   deleteBookBtn: document.querySelector("#delete-book-btn"),
@@ -196,6 +214,161 @@ function flushSave() {
   }
 
   return ok;
+}
+
+function createExportOption({ id, title, description, meta }) {
+  const button = document.createElement("button");
+  const main = document.createElement("span");
+  const titleElement = document.createElement("span");
+  const descriptionElement = document.createElement("span");
+  const metaElement = document.createElement("span");
+
+  button.type = "button";
+  button.className = "export-option";
+  button.dataset.exportFormat = id;
+  main.className = "export-option-main";
+  titleElement.className = "export-option-title";
+  titleElement.textContent = title;
+  descriptionElement.className = "export-option-desc";
+  descriptionElement.textContent = description;
+  metaElement.className = "export-option-meta";
+  metaElement.textContent = meta;
+  main.append(titleElement, descriptionElement);
+  button.append(main, metaElement);
+
+  return button;
+}
+
+function renderExportOptions() {
+  const options = [
+    createExportOption({
+      id: "project",
+      title: "Project backup",
+      description: "Every lorebook and setting in one restorable file.",
+      meta: "Project"
+    }),
+    ...EXPORT_FORMATS.map((format) => createExportOption({
+      id: format.id,
+      title: format.label,
+      description: format.description,
+      meta: "Book"
+    }))
+  ];
+
+  refs.exportOptions.replaceChildren(...options);
+}
+
+function formatBackupDate(timestamp) {
+  if (!timestamp) {
+    return "unknown date";
+  }
+
+  return new Date(timestamp).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
+
+function refreshBackupStatus() {
+  const info = getProjectBackupInfo();
+
+  if (!info.ok) {
+    refs.backupStatus.textContent = "No backup saved.";
+    refs.restoreBackupBtn.disabled = true;
+    return;
+  }
+
+  const bookLabel = `${info.books} ${info.books === 1 ? "lorebook" : "lorebooks"}`;
+  const entryLabel = `${info.entries} ${info.entries === 1 ? "entry" : "entries"}`;
+  refs.backupStatus.textContent = `${bookLabel} · ${entryLabel}\n${formatBackupDate(info.createdAt)}`;
+  refs.restoreBackupBtn.disabled = false;
+}
+
+function openExportDialog() {
+  const book = getActiveBook();
+
+  if (!book) {
+    toast("There is no lorebook to export.", "error");
+    return;
+  }
+
+  renderExportOptions();
+  refreshBackupStatus();
+  refs.exportBookName.textContent = `${book.name.trim() || "Untitled Lorebook"} · ${book.entries.length} ${book.entries.length === 1 ? "entry" : "entries"} · book exports use the active lorebook`;
+  refs.exportDialog.showModal();
+}
+
+function handleExport(formatId) {
+  const book = getActiveBook();
+
+  if (!book) {
+    toast("There is no lorebook to export.", "error");
+    return;
+  }
+
+  if (formatId === "project") {
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadJson(buildExport(getState()), `lorebook-studio-project-${stamp}.json`);
+    refs.exportDialog.close();
+    toast("Project backup exported", "success");
+    return;
+  }
+
+  const exported = serializeLorebook(formatId, book);
+
+  if (!exported.ok) {
+    toast(exported.error, "error");
+    return;
+  }
+
+  downloadJson(exported.data, exported.filename);
+  refs.exportDialog.close();
+  toast(`Exported ${book.name.trim() || "Untitled Lorebook"} as ${exported.label}`, "success");
+
+  if (exported.warnings.length) {
+    toast(exported.warnings[0]);
+  }
+}
+
+async function handleRestoreBackup() {
+  const backup = loadProjectBackup();
+
+  if (!backup.ok) {
+    toast(backup.error, "error");
+    return;
+  }
+
+  const bookCount = backup.project.books.length;
+  const entryCount = backup.project.books.reduce((total, book) => total + book.entries.length, 0);
+  refs.exportDialog.close();
+
+  const accepted = await confirmAction({
+    title: "Restore pre-import backup?",
+    message: "This replaces the current project. You can undo the restore afterward.",
+    details: [
+      { label: "Backup from", value: formatBackupDate(backup.createdAt) },
+      { label: "Lorebooks", value: String(bookCount) },
+      { label: "Entries", value: String(entryCount) }
+    ],
+    confirmLabel: "Restore backup",
+    tone: "primary"
+  });
+
+  if (!accepted) {
+    return;
+  }
+
+  replaceProject(backup.project);
+  clearSearch();
+  const sortMode = readSortMode();
+
+  if (sortMode) {
+    setSortMode(sortMode);
+  }
+
+  renderAll();
+  flushSave();
+  toast("Pre-import backup restored", "success");
 }
 
 function clearSearch() {
@@ -441,17 +614,35 @@ async function handleImport(file) {
 
   const bookCount = parsed.project.books.length;
   const entryCount = parsed.project.books.reduce((total, book) => total + book.entries.length, 0);
-  const summary = bookCount === 1
-    ? `${entryCount} ${entryCount === 1 ? "entry" : "entries"}`
-    : `${bookCount} lorebooks and ${entryCount} entries`;
   const accepted = await confirmAction({
-    title: "Import lorebook?",
-    message: `Import "${file.name}" as ${parsed.format}? It contains ${summary} and will replace your current project.`,
-    confirmLabel: "Import lorebook"
+    title: "Import preview",
+    message: `"${file.name}" is ready to import. The current project will be saved as a local backup before it is replaced.`,
+    details: [
+      { label: "Format", value: parsed.format },
+      { label: "File", value: file.name },
+      { label: "Lorebooks", value: String(bookCount) },
+      { label: "Entries", value: String(entryCount) }
+    ],
+    warnings: parsed.warnings || [],
+    confirmLabel: "Import and replace"
   });
 
   if (!accepted) {
     return;
+  }
+
+  const backup = saveProjectBackup(getState(), `Before importing ${file.name}`);
+
+  if (!backup.ok) {
+    const proceed = await confirmAction({
+      title: "Backup failed",
+      message: "The current project could not be backed up. Importing will replace it without a recovery copy.",
+      confirmLabel: "Import without backup"
+    });
+
+    if (!proceed) {
+      return;
+    }
   }
 
   replaceProject(parsed.project);
@@ -467,8 +658,8 @@ async function handleImport(file) {
   flushSave();
   toast(`Imported ${parsed.format}: ${entryCount} ${entryCount === 1 ? "entry" : "entries"}`, "success");
 
-  if (parsed.warnings?.length) {
-    toast(parsed.warnings[0]);
+  if (backup.ok) {
+    toast("Previous project saved as a pre-import backup");
   }
 }
 
@@ -823,10 +1014,28 @@ refs.importInput.addEventListener("change", async () => {
   }
 });
 
-refs.exportBtn.addEventListener("click", () => {
-  const stamp = new Date().toISOString().slice(0, 10);
-  downloadJson(buildExport(getState()), `lorebook-studio-${stamp}.json`);
-  toast("Project exported", "success");
+refs.exportBtn.addEventListener("click", openExportDialog);
+
+refs.exportCancelBtn.addEventListener("click", () => {
+  refs.exportDialog.close();
+});
+
+refs.exportOptions.addEventListener("click", (event) => {
+  const option = event.target.closest("[data-export-format]");
+
+  if (option) {
+    handleExport(option.dataset.exportFormat);
+  }
+});
+
+refs.restoreBackupBtn.addEventListener("click", () => {
+  handleRestoreBackup();
+});
+
+refs.exportDialog.addEventListener("click", (event) => {
+  if (event.target === refs.exportDialog) {
+    refs.exportDialog.close();
+  }
 });
 
 function isTypingTarget(target) {

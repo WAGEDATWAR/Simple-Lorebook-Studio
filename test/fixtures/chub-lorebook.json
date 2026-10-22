@@ -1,0 +1,64 @@
+{
+  "name": "Dual Field Lorebook",
+  "description": "A fixture covering Chub's overlapping field names and preserved extension data.",
+  "extensions": {
+    "chub": true,
+    "fixture": "dual"
+  },
+  "scan_depth": 12,
+  "entries": {
+    "1": {
+      "uid": 1,
+      "key": ["alpha"],
+      "keys": ["alpha"],
+      "keysecondary": ["beta"],
+      "secondary_keys": ["beta"],
+      "comment": "Alpha Gate",
+      "name": "Alpha Gate",
+      "content": "The eastern gate opens when a bell rings twice.",
+      "order": 15,
+      "insertion_order": 15,
+      "position": 0,
+      "disable": false,
+      "enabled": true,
+      "constant": false,
+      "selective": true,
+      "caseSensitive": false,
+      "case_sensitive": false,
+      "matchWholeWords": true,
+      "match_whole_words": true,
+      "probability": 45,
+      "useProbability": true,
+      "extensions": {
+        "depth": 4,
+        "role": 1
+      },
+      "priority": 8
+    },
+    "5": {
+      "uid": 5,
+      "key": ["gamma"],
+      "keys": ["gamma"],
+      "keysecondary": [],
+      "secondary_keys": [],
+      "comment": "Gamma Lock",
+      "name": "Gamma Lock",
+      "content": "The lock is bound to the old surveyor's seal.",
+      "order": 5,
+      "insertion_order": 5,
+      "position": 3,
+      "disable": true,
+      "enabled": false,
+      "constant": true,
+      "selective": false,
+      "caseSensitive": true,
+      "case_sensitive": true,
+      "matchWholeWords": false,
+      "match_whole_words": false,
+      "probability": 100,
+      "useProbability": false,
+      "extensions": {},
+      "priority": 2
+    }
+  }
+}

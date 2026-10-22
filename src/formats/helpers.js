@@ -17,6 +17,14 @@ const POSITION_MAP = new Map([
   ["an_bottom", "after_an"]
 ]);
 
+const POSITION_TO_NUMBER = new Map([
+  ["before_char", 0],
+  ["after_char", 1],
+  ["before_an", 2],
+  ["after_an", 3],
+  ["at_depth", 4]
+]);
+
 const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 const HANDLED_ENTRY_KEYS = new Set([
@@ -107,6 +115,45 @@ export function mapPosition(value) {
   }
 
   return POSITION_MAP.get(value) ?? null;
+}
+
+export function mapPositionToNumber(value) {
+  return POSITION_TO_NUMBER.get(value) ?? 0;
+}
+
+export function copyPreservedFields(extensions, formatId) {
+  const fields = extensions?.source === formatId ? extensions.sourceFields : null;
+
+  if (!isRecord(fields)) {
+    return {};
+  }
+
+  const result = {};
+
+  for (const [key, value] of Object.entries(fields)) {
+    if (!UNSAFE_KEYS.has(key)) {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+export function createUidAllocator() {
+  const used = new Set();
+
+  return (entry) => {
+    const sourceId = entry?.extensions?.sourceId;
+    const parsed = Number(sourceId);
+    let uid = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+
+    while (used.has(uid)) {
+      uid += 1;
+    }
+
+    used.add(uid);
+    return uid;
+  };
 }
 
 export function resolveLorebook(input) {

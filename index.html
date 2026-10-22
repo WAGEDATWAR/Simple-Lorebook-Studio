@@ -54,7 +54,7 @@
           </svg>
           <span class="btn-label">Import</span>
         </button>
-        <button id="export-btn" class="btn" type="button" aria-label="Export project" title="Export project as JSON">
+        <button id="export-btn" class="btn" type="button" aria-label="Export lorebook or project" title="Export lorebook or project">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>
           </svg>
@@ -291,10 +291,38 @@
     </div>
   </div>
 
+  <dialog id="export-dialog" class="dialog export-dialog" aria-labelledby="export-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Export</p>
+        <h2 id="export-title">Choose an output</h2>
+        <p id="export-book-name" class="dialog-copy"></p>
+      </div>
+      <div id="export-options" class="export-options"></div>
+      <section class="backup-block" aria-labelledby="backup-title">
+        <div class="backup-heading">
+          <div>
+            <h3 id="backup-title">Pre-import backup</h3>
+            <p id="backup-status">No backup saved.</p>
+          </div>
+          <button id="restore-backup-btn" class="btn" type="button" disabled>Restore</button>
+        </div>
+        <p class="backup-note">Created automatically before an import replaces the current project.</p>
+      </section>
+      <div class="dialog-actions">
+        <button id="export-cancel" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
     <div class="dialog-inner">
       <h2 id="confirm-title">Confirm action</h2>
       <p id="confirm-message"></p>
+      <div id="confirm-details" class="confirm-details" hidden>
+        <dl id="confirm-detail-list" class="confirm-detail-list"></dl>
+        <div id="confirm-warnings" class="confirm-warnings" hidden></div>
+      </div>
       <div class="dialog-actions">
         <button id="confirm-cancel" class="btn" type="button">Cancel</button>
         <button id="confirm-accept" class="btn btn-danger" type="button">Confirm</button>
