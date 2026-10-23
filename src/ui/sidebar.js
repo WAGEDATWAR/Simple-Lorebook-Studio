@@ -187,6 +187,10 @@ export function renderSidebar(refs) {
     state.ui.sortMode
   );
   const scrollTop = refs.entryList.scrollTop;
+  const activeElement = document.activeElement;
+  const focusedEntryId = activeElement instanceof Element
+    ? activeElement.closest("[data-entry-id]")?.dataset.entryId ?? null
+    : null;
   const selected = new Set(getSelectedEntryIds());
   const canDrag = state.ui.sortMode === "manual" && !query && !hasFilters;
 
@@ -233,4 +237,10 @@ export function renderSidebar(refs) {
 
   refs.entryList.append(fragment);
   refs.entryList.scrollTop = scrollTop;
+
+  if (focusedEntryId) {
+    const card = Array.from(refs.entryList.querySelectorAll("[data-entry-id]"))
+      .find((element) => element.dataset.entryId === focusedEntryId);
+    card?.focus({ preventScroll: true });
+  }
 }

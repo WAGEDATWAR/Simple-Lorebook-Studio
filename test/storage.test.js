@@ -6,13 +6,19 @@ const memory = new Map();
 let failWrites = false;
 let writesBeforeFailure = null;
 
+function createQuotaError() {
+  const error = new Error("Quota exceeded");
+  error.name = "QuotaExceededError";
+  return error;
+}
+
 globalThis.localStorage = {
   getItem(key) {
     return memory.has(key) ? memory.get(key) : null;
   },
   setItem(key, value) {
     if (failWrites || writesBeforeFailure === 0) {
-      throw new Error("Quota exceeded");
+      throw createQuotaError();
     }
 
     if (writesBeforeFailure !== null) {
@@ -39,6 +45,7 @@ const {
   loadRevision,
   saveProject,
   saveProjectBackup,
+  saveProjectDetailed,
   saveRevision
 } = await import("../src/storage.js");
 
@@ -108,6 +115,16 @@ test("reports backup write failures", () => {
 
   assert.equal(result.ok, false);
   assert.match(result.error, /could not be saved/);
+});
+
+test("reports a detailed quota failure for project saves", () => {
+  memory.clear();
+  failWrites = true;
+  const result = saveProjectDetailed(createState("Unsaved Book", "Entry"));
+  failWrites = false;
+
+  assert.equal(result.ok, false);
+  assert.equal(result.quotaExceeded, true);
 });
 
 test("saves, deduplicates, and restores revisions", () => {

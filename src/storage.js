@@ -128,13 +128,28 @@ export function loadProject() {
   return createSampleProject();
 }
 
-export function saveProject(state) {
+function isQuotaError(error) {
+  return error?.name === "QuotaExceededError"
+    || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    || error?.code === 22
+    || error?.code === 1014;
+}
+
+export function saveProjectDetailed(state) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(createProjectPayload(state)));
-    return true;
-  } catch {
-    return false;
+    return { ok: true, error: "", quotaExceeded: false };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.message || "Unknown storage error",
+      quotaExceeded: isQuotaError(error)
+    };
   }
+}
+
+export function saveProject(state) {
+  return saveProjectDetailed(state).ok;
 }
 
 export function getRevisions() {

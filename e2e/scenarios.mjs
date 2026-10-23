@@ -39,6 +39,23 @@ async function importFile(page, path) {
   await page.waitFor('document.querySelector("#diff-dialog")?.open');
 }
 
+async function pressKey(page, selector, key, { ctrl = false, shift = false, alt = false } = {}) {
+  await page.evaluate(`(() => {
+    const target = document.querySelector(${JSON.stringify(selector)});
+    target.focus();
+    target.dispatchEvent(new KeyboardEvent("keydown", {
+      key: ${JSON.stringify(key)},
+      bubbles: true,
+      cancelable: true,
+      ctrlKey: ${ctrl},
+      metaKey: ${ctrl},
+      shiftKey: ${shift},
+      altKey: ${alt}
+    }));
+    return true;
+  })()`);
+}
+
 export const scenarios = [
   {
     name: "boots with the sample project",
@@ -121,6 +138,75 @@ export const scenarios = [
 
       const pressed = await page.evaluate('[...document.querySelectorAll("#entry-filters [data-filter]")].map((button) => button.getAttribute("aria-pressed"))');
       assert.deepEqual(pressed, ["false", "false", "false", "false"]);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "navigates and restores focus in the entry list",
+    async run(page) {
+      await resetApp(page);
+      const firstId = await page.evaluate('document.querySelector(".entry-card").dataset.entryId');
+      await pressKey(page, `[data-entry-id="${firstId}"]`, "ArrowDown");
+      await page.waitFor('document.querySelector("#entry-title").value === "Mara Voss"');
+
+      let focused = await page.evaluate('document.activeElement.closest("[data-entry-id]")?.dataset.entryId ?? ""');
+      let active = await page.evaluate('document.querySelector(".entry-card.is-active")?.dataset.entryId ?? ""');
+      assert.equal(focused, active);
+
+      await pressKey(page, `[data-entry-id="${active}"]`, "End");
+      await page.waitFor('document.querySelector("#entry-title").value === "Tidebinding"');
+      active = await page.evaluate('document.querySelector(".entry-card.is-active").dataset.entryId');
+      await pressKey(page, `[data-entry-id="${active}"]`, "Home");
+      await page.waitFor('document.querySelector("#entry-title").value === "Aurora Vale"');
+
+      await page.click("#delete-entry-btn");
+      await page.waitFor('document.querySelector("#confirm-dialog")?.open');
+      await page.click("#confirm-accept");
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 2');
+      focused = await page.evaluate('document.activeElement.closest("[data-entry-id]")?.dataset.entryId ?? ""');
+      active = await page.evaluate('document.querySelector(".entry-card.is-active")?.dataset.entryId ?? ""');
+      assert.equal(focused, active);
+
+      await page.evaluate('document.querySelector("#history-btn").focus(); true');
+      await page.click("#history-btn");
+      await page.waitFor('document.querySelector("#history-dialog")?.open');
+      await page.click("#history-close");
+      await page.waitFor('!document.querySelector("#history-dialog")?.open');
+      const restored = await page.evaluate('document.activeElement.id');
+      assert.equal(restored, "history-btn");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "recovers from a failed local save",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate(`(() => {
+        window.__originalSetItem = Storage.prototype.setItem;
+        Storage.prototype.setItem = function () {
+          const error = new Error("Quota exceeded");
+          error.name = "QuotaExceededError";
+          throw error;
+        };
+        return true;
+      })()`);
+
+      const content = await page.evaluate('document.querySelector("#entry-content").value');
+      await setValue(page, "#entry-content", `${content}\n\nUnsaved change`);
+      await page.waitFor('!document.querySelector("#storage-banner")?.hidden');
+      const message = await page.evaluate('document.querySelector("#storage-banner-message").textContent');
+      assert.match(message, /storage is full/i);
+      const saveState = await page.evaluate('document.querySelector("#save-state").dataset.state');
+      assert.equal(saveState, "error");
+
+      await page.click("#storage-retry-btn");
+      await sleep(200);
+      assert.equal(await page.evaluate('document.querySelector("#storage-banner").hidden'), false);
+
+      await page.evaluate('Storage.prototype.setItem = window.__originalSetItem; true');
+      await page.click("#storage-retry-btn");
+      await page.waitFor('document.querySelector("#storage-banner").hidden === true');
+      await page.waitFor('document.querySelector("#save-state").dataset.state === "saved"');
       assert.deepEqual(page.errors, []);
     }
   },

@@ -68,6 +68,22 @@
       </div>
     </header>
 
+    <div id="storage-banner" class="storage-banner" role="alert" hidden>
+      <div class="storage-banner-text">
+        <strong>Changes aren't being saved</strong>
+        <span id="storage-banner-message">Export a project backup to protect your work.</span>
+      </div>
+      <div class="storage-banner-actions">
+        <button id="storage-export-btn" class="btn btn-primary" type="button">Export backup</button>
+        <button id="storage-retry-btn" class="btn" type="button">Retry save</button>
+        <button id="storage-dismiss-btn" class="icon-btn" type="button" aria-label="Dismiss storage warning" title="Dismiss">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="m6 6 12 12"/><path d="m18 6-12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <div class="workspace">
       <aside id="sidebar" class="sidebar" aria-label="Library">
         <div class="sidebar-head">

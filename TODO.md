@@ -74,8 +74,8 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Add filters for enabled, disabled, always-on, and entries missing keys.
 - [ ] [P1] Highlight search matches and expose why an entry matched.
 - [ ] [P1] Keep search results stable when the active entry is filtered out.
-- [ ] [P1] Add keyboard navigation in the entry list: arrow keys, Home, End, Enter.
-- [ ] [P1] Preserve list scroll and focus across mutations and re-renders.
+- [x] [P1] Add keyboard navigation in the entry list: arrow keys, Home, End, Enter.
+- [x] [P1] Preserve list scroll and focus across mutations and re-renders.
 - [x] [P2] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] Add pinned or recent entries.
 - [x] [P2] Add overlapping key reports and key coverage summaries.
@@ -96,7 +96,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 - [x] [P0] Add a local backup before destructive imports.
 - [ ] [P1] Move project storage to IndexedDB with a migration from localStorage.
-- [ ] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
+- [x] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
 - [x] [P1] Add revision history or automatic snapshots with restore.
 - [ ] [P1] Add File System Access API support for opening and saving project files.
 - [ ] [P1] Add a periodic reminder to export a backup.
@@ -110,8 +110,8 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Add auto-sized, resizable, and collapsible library and entry-detail sidebars with remembered layouts and wrapping controls.
 - [ ] [P1] Add a mobile library drawer instead of the fixed stacked sidebar if authoring on phones becomes common.
 - [ ] [P1] Run an automated accessibility audit and fix all critical issues.
-- [ ] [P1] Verify focus restoration after delete, book switch, and dialog dismissal.
-- [ ] [P1] Add a proper unsaved-changes strategy for failed localStorage writes.
+- [x] [P1] Verify focus restoration after delete, book switch, and dialog dismissal.
+- [x] [P1] Add a proper unsaved-changes strategy for failed localStorage writes.
 - [ ] [P1] Add an onboarding flow and a clear sample-project badge/reset.
 - [ ] [P1] Add a command palette for quick actions.
 - [ ] [P2] Add a light theme or theme tokens once the component set stabilizes.

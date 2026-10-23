@@ -259,6 +259,45 @@ textarea::placeholder {
   50% { opacity: 1; }
 }
 
+.storage-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 10px 18px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-bottom: 1px solid var(--danger-border);
+}
+
+.storage-banner[hidden] {
+  display: none;
+}
+
+.storage-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.storage-banner-text strong {
+  font-size: 12.5px;
+}
+
+.storage-banner-text span {
+  color: var(--text-soft);
+}
+
+.storage-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;

@@ -45,8 +45,8 @@ import {
   loadProject,
   loadProjectBackup,
   loadRevision,
-  saveProject,
   saveProjectBackup,
+  saveProjectDetailed,
   saveRevision
 } from "./storage.js";
 import { diffProjects } from "./diff.js";
@@ -70,6 +70,11 @@ const refs = {
   bookDescription: document.querySelector("#book-description"),
   bookDescriptionPreview: document.querySelector("#book-description-preview"),
   saveState: document.querySelector("#save-state"),
+  storageBanner: document.querySelector("#storage-banner"),
+  storageBannerMessage: document.querySelector("#storage-banner-message"),
+  storageExportBtn: document.querySelector("#storage-export-btn"),
+  storageRetryBtn: document.querySelector("#storage-retry-btn"),
+  storageDismissBtn: document.querySelector("#storage-dismiss-btn"),
   undoBtn: document.querySelector("#undo-btn"),
   redoBtn: document.querySelector("#redo-btn"),
   historyBtn: document.querySelector("#history-btn"),
@@ -160,6 +165,7 @@ const refs = {
 
 let saveTimer = 0;
 let saveFailed = false;
+let unsavedChanges = false;
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
@@ -395,6 +401,23 @@ function setSaveState(mode) {
   label.textContent = mode === "saving" ? "Saving" : mode === "error" ? "Unsaved" : "Saved";
 }
 
+function showStorageBanner(result) {
+  if (!refs.storageBanner) {
+    return;
+  }
+
+  refs.storageBannerMessage.textContent = result?.quotaExceeded
+    ? "Browser storage is full, so your latest changes are only in memory. Export a project backup now, then remove old revisions or free up space and retry."
+    : "Your latest changes could not be saved to this browser. Export a project backup to protect your work, then retry.";
+  refs.storageBanner.hidden = false;
+}
+
+function hideStorageBanner() {
+  if (refs.storageBanner) {
+    refs.storageBanner.hidden = true;
+  }
+}
+
 function updateDocumentTitle() {
   const book = getActiveBook();
   document.title = `${book?.name.trim() || "Untitled Lorebook"} — Lorebook Studio`;
@@ -425,6 +448,7 @@ function renderAll() {
 
 function scheduleSave() {
   window.clearTimeout(saveTimer);
+  unsavedChanges = true;
   setSaveState("saving");
   updateHistoryButtons();
   updateValidationIndicator();
@@ -574,20 +598,26 @@ function scrollEntryCardIntoView(id) {
 
 function flushSave() {
   window.clearTimeout(saveTimer);
-  const ok = saveProject(getState());
-  setSaveState(ok ? "saved" : "error");
+  const result = saveProjectDetailed(getState());
+  setSaveState(result.ok ? "saved" : "error");
 
-  if (!ok) {
+  if (!result.ok) {
+    unsavedChanges = true;
+
     if (!saveFailed) {
-      toast("Couldn't save locally. Your browser storage may be full.", "error");
+      toast("Couldn't save locally. Export a backup to protect your work.", "error");
     }
+
     saveFailed = true;
+    showStorageBanner(result);
   } else {
     saveFailed = false;
+    unsavedChanges = false;
+    hideStorageBanner();
     maybeSaveRevision();
   }
 
-  return ok;
+  return result.ok;
 }
 
 function createExportOption({ id, title, description, meta }) {
@@ -939,19 +969,23 @@ function openExportDialog() {
   refs.exportDialog.showModal();
 }
 
+function exportProjectBackup() {
+  const stamp = new Date().toISOString().slice(0, 10);
+  downloadJson(buildExport(getState()), `lorebook-studio-project-${stamp}.json`);
+  toast("Project backup exported", "success");
+}
+
 function handleExport(formatId) {
+  if (formatId === "project") {
+    exportProjectBackup();
+    refs.exportDialog.close();
+    return;
+  }
+
   const book = getActiveBook();
 
   if (!book) {
     toast("There is no lorebook to export.", "error");
-    return;
-  }
-
-  if (formatId === "project") {
-    const stamp = new Date().toISOString().slice(0, 10);
-    downloadJson(buildExport(getState()), `lorebook-studio-project-${stamp}.json`);
-    refs.exportDialog.close();
-    toast("Project backup exported", "success");
     return;
   }
 
@@ -1224,6 +1258,15 @@ async function handleDeleteEntry() {
   deleteActiveEntry();
   clearSearch();
   renderAll();
+  const nextId = getState().activeEntryId;
+
+  if (nextId) {
+    scrollEntryCardIntoView(nextId);
+    focusEntryCard(nextId);
+  } else {
+    refs.addEntryBtn.focus();
+  }
+
   scheduleSave();
   toast("Entry deleted");
 }
@@ -1250,6 +1293,7 @@ async function handleDeleteBook() {
   deleteBook(book.id);
   clearSearch();
   renderAll();
+  refs.bookSelect.focus();
   scheduleSave();
   toast("Lorebook deleted");
 }
@@ -1285,6 +1329,15 @@ async function handleBulkDelete() {
 
   deleteEntries(ids);
   renderAll();
+  const nextId = getState().activeEntryId;
+
+  if (nextId) {
+    scrollEntryCardIntoView(nextId);
+    focusEntryCard(nextId);
+  } else {
+    refs.addEntryBtn.focus();
+  }
+
   scheduleSave();
   toast(`${ids.length} ${ids.length === 1 ? "entry" : "entries"} deleted`);
 }
@@ -1549,6 +1602,34 @@ refs.entryList.addEventListener("keydown", (event) => {
       toggle: event.ctrlKey || event.metaKey,
       range: event.shiftKey
     });
+    return;
+  }
+
+  if (!event.altKey && (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Home" || event.key === "End")) {
+    event.preventDefault();
+    const ids = visibleEntryIds();
+    const index = ids.indexOf(id);
+
+    if (index === -1) {
+      return;
+    }
+
+    const targetIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? ids.length - 1
+        : index + (event.key === "ArrowDown" ? 1 : -1);
+
+    if (targetIndex < 0 || targetIndex >= ids.length || targetIndex === index) {
+      return;
+    }
+
+    const targetId = ids[targetIndex];
+    activateEntryCard(targetId, {
+      toggle: event.ctrlKey || event.metaKey,
+      range: event.shiftKey
+    });
+    scrollEntryCardIntoView(targetId);
     return;
   }
 
@@ -1932,6 +2013,22 @@ refs.importInput.addEventListener("change", async () => {
 
 refs.exportBtn.addEventListener("click", openExportDialog);
 
+refs.storageExportBtn.addEventListener("click", () => {
+  exportProjectBackup();
+});
+
+refs.storageRetryBtn.addEventListener("click", () => {
+  if (flushSave()) {
+    toast("Changes saved locally", "success");
+  } else {
+    toast("Still unable to save. Export a backup to protect your work.", "error");
+  }
+});
+
+refs.storageDismissBtn.addEventListener("click", () => {
+  hideStorageBanner();
+});
+
 refs.exportCancelBtn.addEventListener("click", () => {
   refs.exportDialog.close();
 });
@@ -2047,13 +2144,25 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-window.addEventListener("beforeunload", () => {
-  saveProject(getState());
+window.addEventListener("beforeunload", (event) => {
+  const result = saveProjectDetailed(getState());
+
+  if (!result.ok) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
-    saveProject(getState());
+    const result = saveProjectDetailed(getState());
+
+    if (!result.ok) {
+      saveFailed = true;
+      unsavedChanges = true;
+      setSaveState("error");
+      showStorageBanner(result);
+    }
   }
 });
 
@@ -2088,9 +2197,14 @@ if (storedSidebarWidth === null) {
   applySidebarWidth(storedSidebarWidth);
 }
 
-if (saveProject(getState())) {
+const initialSave = saveProjectDetailed(getState());
+
+if (initialSave.ok) {
   setSaveState("saved");
   maybeSaveRevision();
 } else {
+  saveFailed = true;
+  unsavedChanges = true;
   setSaveState("error");
+  showStorageBanner(initialSave);
 }

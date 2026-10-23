@@ -4,6 +4,15 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-22
+
+### Added
+
+- Entry-list keyboard navigation with arrow keys, Home, End, and Enter/Space.
+- Focus restoration after entry/book deletion and dialog dismissal, plus scroll and focus preservation across re-renders.
+- A storage-failure banner with export and retry actions.
+- A beforeunload warning and unsaved-state tracking when local saves fail.
+
 ## [0.5.3] - 2026-10-22
 
 ### Added

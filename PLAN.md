@@ -57,6 +57,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Multi-select with `Ctrl/Cmd+click` and `Shift+click`, plus bulk enable, disable, delete, and clear actions.
 - Sort modes: manual order, title, insertion order, last edited, and enabled first. The preference persists locally.
 - Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally.
+- Entry-list keyboard navigation with `ArrowUp`/`ArrowDown`/`Home`/`End`, `Enter`/`Space` activation, and `Ctrl`/`Shift` selection modifiers.
+- Focus and scroll preservation across sidebar re-renders, plus focus restoration after entry/book deletion and dialog dismissal.
+- A storage-failure banner with export and retry actions, and a beforeunload warning when a local save fails.
 - Compact entry ID badges use source IDs when available and a stable compact fallback for native entries.
 - Destructive actions behind a styled confirmation dialog.
 - Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
@@ -357,10 +360,11 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - The history control lists local snapshots with reasons, counts, and compact change counts. Users can compare a snapshot with the previous one, save a snapshot, or restore one after confirmation; the current state is snapshotted before a restore.
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
-- Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering.
+- Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown` and list navigation with the arrow keys, `Home`, and `End`.
+- Focus returns to the next entry after deletion and to the trigger control after a dialog closes; list scroll and focus survive re-renders.
 - Entry cards show compact IDs, with the full internal ID exposed in a tooltip.
 - Inline options are chips; grouped numeric/enumerated settings live in one injection row.
-- Toasts confirm imports, exports, save failures, duplication, bulk changes, and deletions.
+- Toasts confirm imports, exports, save failures, duplication, bulk changes, and deletions. A persistent banner with export and retry actions appears while local saves are failing.
 - Empty states explain the next action and expose the primary CTA.
 
 ### Accessibility
@@ -433,8 +437,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 63 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 64 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, keyboard navigation and focus restoration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
