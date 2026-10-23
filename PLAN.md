@@ -34,7 +34,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Lorebook create, rename, switch, and delete.
 - Editable book descriptions stored with each lorebook and previewed in the sidebar.
 - Lorebook information section with the description, overview, and validation controls above entry search.
-- Book-level validation for empty content, repeated or overlapping keys, missing keys on non-constant entries, and insertion-order collisions, with jump-to-entry issue links.
+- Book-level validation for empty content, repeated keys, key collisions across entries, missing keys, unreachable enabled entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
 - Search across title, content, trigger keys, secondary keys, and author notes.
@@ -56,6 +56,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Drag reordering in manual order plus keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown`.
 - Multi-select with `Ctrl/Cmd+click` and `Shift+click`, plus bulk enable, disable, delete, and clear actions.
 - Sort modes: manual order, title, insertion order, last edited, and enabled first. The preference persists locally.
+- Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally.
 - Compact entry ID badges use source IDs when available and a stable compact fallback for native entries.
 - Destructive actions behind a styled confirmation dialog.
 - Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
@@ -102,7 +103,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/schema.test.js` | Normalization, defaults, clamping, and active-ID resolution tests |
 | `test/overview.test.js` | Book metrics, token totals, and key coverage tests |
 | `test/templates.test.js` | Built-in template integrity and independent patch tests |
-| `test/validation.test.js` | Empty content, duplicate key, missing key, and order collision tests |
+| `test/validation.test.js` | Empty content, duplicate key, key collision, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
 | `test/store.test.js` | History, description edits, duplication, selection, bulk actions, reordering, and sorting tests |
@@ -393,7 +394,7 @@ Exit criteria: the app loads with no build step, edits persist across reloads, n
 
 ### Phase 1 - Editor depth
 
-Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, entry ID badges, editable book descriptions, author-only notes, built-in entry templates, the book overview, and the validation panel.
+Completed: entry duplication, manual and sorted ordering, drag and keyboard reordering, multi-select bulk actions, session undo/redo, entry ID badges, editable book descriptions, author-only notes, built-in entry templates, the book overview, entry filters, and the validation panel with key-collision and unreachable-entry detection.
 
 Remaining: richer empty/search states, resizable panes, and full keyboard list navigation.
 
@@ -429,20 +430,24 @@ Exit criteria: a new user can create and export their first lorebook without ext
 
 Current checks:
 
-- `npm run check` validates every JavaScript module syntactically.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, overview metrics, templates, schema normalization, and validation. The suite currently passes 61 tests.
-- GitHub Actions runs `npm run check` and `npm test` on pushes to `main` and pull requests.
+- `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
+- `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
+- `npm run format` reports whitespace issues; `npm run format:write` fixes them.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 63 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, import strategies, revision comparison, and responsive layout.
+- `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
+- GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
 - Headless Chrome verified the export, validation, history, overview, and template dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
 - Browser session checks covered project backup download, single-book SillyTavern export, import-preview details and warnings, automatic backup creation, backup restore, undoable project replacement, description editing and reload persistence, validation counts, issue filtering, jump-to-entry, automatic and manual snapshots, restore with a pre-restore snapshot, notes persistence, the overview metrics, and template creation.
-- Browser checks covered automatic library width, 200 px and 460 px resize bounds, keyboard resizing, double-click auto-fit reset, wrapped controls, persisted width and collapse state, viewport changes, and 1440/390/320 px layouts with no horizontal overflow.
+- Browser checks covered automatic library width, 200 px and 460 px resize bounds, keyboard resizing, double-click auto-fit reset, wrapped controls, persisted width and collapse state, viewport changes, entry filters, and 1440/390/320 px layouts with no horizontal overflow.
 - Browser checks covered import replacement, append, and merge-by-title strategies, live strategy switching and diff refresh, import diff review, revision compare counts and dialogs, expanded line changes, nested history/diff dialogs, cancellation, and 1440/390/320 px layouts with no horizontal overflow.
 - Visual review covered the export dialog, validation dialog, import strategy control and diff, revision diff, narrow history actions, backup metadata, overview, template picker, mobile dialog layout, resized and wrapped library sidebar, focus, contrast, and empty space.
 
 Planned checks:
 
 - Broader Chub fixture coverage against additional real exported files.
-- A committed browser end-to-end test suite for CRUD, autosave, import/export, shortcuts, and dialogs.
+- Browser end-to-end coverage for export downloads and keyboard shortcuts to complete the committed suite.
 - Automated accessibility scan plus manual screen-reader pass.
 - Performance target: smooth interaction with 1,000 entries and 500,000 characters in a project.
 

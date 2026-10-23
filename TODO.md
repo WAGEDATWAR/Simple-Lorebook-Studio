@@ -71,7 +71,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 ## Organization and Search
 
 - [ ] [P1] Add tags and/or folders for books and entries.
-- [ ] [P1] Add filters for enabled, disabled, always-on, and entries missing keys.
+- [x] [P1] Add filters for enabled, disabled, always-on, and entries missing keys.
 - [ ] [P1] Highlight search matches and expose why an entry matched.
 - [ ] [P1] Keep search results stable when the active entry is filtered out.
 - [ ] [P1] Add keyboard navigation in the entry list: arrow keys, Home, End, Enter.
@@ -86,7 +86,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Show token counts per entry, per enabled set, and per book.
 - [ ] [P1] Add a token budget field and warnings when a book exceeds it.
 - [ ] [P1] Add a context simulation view showing likely activation order and injected text.
-- [ ] [P1] Add key collision and unreachable-entry detection.
+- [x] [P1] Add key collision and unreachable-entry detection.
 - [ ] [P2] Add configurable model/tokenizer presets.
 - [ ] [P2] Add context window presets for common frontend configurations.
 - [ ] [P2] Add bulk operations based on token size.
@@ -126,14 +126,14 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 - [x] [P0] Choose and configure a test runner using the built-in Node test runner.
 - [x] [P0] Add unit tests for normalization, mutations, native import/export, and format detection.
-- [ ] [P0] Add browser end-to-end tests for CRUD, autosave, search, import/export, shortcuts, and dialogs.
-- [ ] [P1] Add linting and formatting configuration.
-- [~] [P1] Add CI running syntax checks, unit tests, and end-to-end tests. (GitHub Actions runs syntax checks and unit tests; browser E2E pending)
+- [~] [P0] Add browser end-to-end tests for CRUD, autosave, search, import/export, shortcuts, and dialogs. (Harness covers CRUD, autosave, search, import strategies, revisions, and responsive layout; export and shortcuts pending)
+- [x] [P1] Add linting and formatting configuration.
+- [x] [P1] Add CI running syntax checks, unit tests, and end-to-end tests.
 - [ ] [P1] Add explicit size and schema limits for imported files.
 - [ ] [P1] Ensure all imported data is rendered as text and never injected as HTML.
 - [ ] [P1] Add a performance benchmark for large books and virtualization if needed.
 - [ ] [P2] Add TypeScript or JSDoc types if schema complexity grows.
-- [ ] [P2] Add a release/versioning convention and changelog.
+- [x] [P2] Add a release/versioning convention and changelog.
 - [ ] [P2] Add offline support as a PWA.
 - [ ] [P2] Add deployment automation to a static host.
 

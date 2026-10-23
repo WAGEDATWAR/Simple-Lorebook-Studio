@@ -1,0 +1,28 @@
+{
+  "app": "lorebook-studio",
+  "version": 1,
+  "activeBookId": "book_merge_fixture",
+  "activeEntryId": "entry_merge_fixture",
+  "books": [
+    {
+      "id": "book_merge_fixture",
+      "name": "Aurora Vale",
+      "description": "",
+      "entries": [
+        {
+          "id": "entry_merge_fixture",
+          "title": "Mara Voss",
+          "keys": ["mara", "mara voss", "harbormaster"],
+          "secondaryKeys": ["the harbormaster", "she"],
+          "content": "Merged Mara content.",
+          "enabled": true,
+          "constant": false,
+          "selective": true,
+          "order": 110,
+          "position": "before_char",
+          "probability": 100
+        }
+      ]
+    }
+  ]
+}

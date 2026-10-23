@@ -17,6 +17,7 @@ import {
   duplicateEntry,
   getActiveBook,
   getActiveEntry,
+  getEntryFilters,
   getSelectedEntryIds,
   getSelectionAnchorId,
   getState,
@@ -29,8 +30,10 @@ import {
   setActiveBook,
   setActiveEntry,
   setEntriesEnabled,
+  setEntryFilters,
   setSearchQuery,
   setSortMode,
+  toggleEntryFilter,
   toggleEntrySelection,
   undo,
   updateActiveBookDescription,
@@ -90,6 +93,7 @@ const refs = {
   deleteBookBtn: document.querySelector("#delete-book-btn"),
   entrySearch: document.querySelector("#entry-search"),
   entrySort: document.querySelector("#entry-sort"),
+  entryFilters: document.querySelector("#entry-filters"),
   entryCount: document.querySelector("#entry-count"),
   overviewBtn: document.querySelector("#overview-btn"),
   overviewDialog: document.querySelector("#overview-dialog"),
@@ -162,6 +166,7 @@ const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
 const SIDEBAR_STATE_KEY = "lorebook-studio:sidebar-collapsed:v1";
 const SIDEBAR_WIDTH_KEY = "lorebook-studio:sidebar-width:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
+const FILTER_STATE_KEY = "lorebook-studio:filters:v1";
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
 const AUTO_REVISION_INTERVAL_MS = 5 * 60 * 1000;
 const SIDEBAR_MIN_WIDTH = 200;
@@ -187,6 +192,29 @@ function readSortMode() {
 function persistSortMode(mode) {
   try {
     localStorage.setItem(SORT_STATE_KEY, mode);
+  } catch {
+    return;
+  }
+}
+
+function readEntryFilters() {
+  try {
+    const raw = localStorage.getItem(FILTER_STATE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistEntryFilters(filters) {
+  try {
+    localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(filters));
   } catch {
     return;
   }
@@ -421,7 +449,7 @@ function renderValidationDialog() {
 
   refs.validationSummary.textContent = issues.length
     ? `${issues.length} ${issues.length === 1 ? "issue" : "issues"} across ${entryCount} ${entryCount === 1 ? "entry" : "entries"}.`
-    : "No issues found. Empty content, duplicate keys, missing keys, and insertion-order collisions will appear here.";
+    : "No issues found. Empty content, duplicate keys, key collisions, missing keys, unreachable entries, and insertion-order collisions will appear here.";
   refs.validationCategories.replaceChildren();
   refs.validationIssues.replaceChildren();
 
@@ -1640,6 +1668,18 @@ refs.entrySort.addEventListener("change", (event) => {
   renderSidebar(refs);
 });
 
+refs.entryFilters.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-filter]");
+
+  if (!chip) {
+    return;
+  }
+
+  toggleEntryFilter(chip.dataset.filter);
+  persistEntryFilters(getEntryFilters());
+  renderSidebar(refs);
+});
+
 refs.bulkEnableBtn.addEventListener("click", () => {
   handleBulkEnabled(true);
 });
@@ -2029,6 +2069,12 @@ const initialSortMode = readSortMode();
 
 if (initialSortMode) {
   setSortMode(initialSortMode);
+}
+
+const initialFilters = readEntryFilters();
+
+if (initialFilters) {
+  setEntryFilters(initialFilters);
 }
 
 renderAll();

@@ -136,6 +136,13 @@
               <input id="entry-search" type="search" placeholder="Search entries" autocomplete="off" spellcheck="false">
               <kbd aria-hidden="true">/</kbd>
             </div>
+
+            <div id="entry-filters" class="entry-filters" role="group" aria-label="Filter entries">
+              <button class="filter-chip" type="button" data-filter="enabled" aria-pressed="false">Enabled</button>
+              <button class="filter-chip" type="button" data-filter="disabled" aria-pressed="false">Disabled</button>
+              <button class="filter-chip" type="button" data-filter="alwaysOn" aria-pressed="false">Always on</button>
+              <button class="filter-chip" type="button" data-filter="missingKeys" aria-pressed="false">Missing keys</button>
+            </div>
           </div>
 
           <div class="entry-list-head">

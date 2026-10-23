@@ -1,6 +1,6 @@
 {
   "name": "lorebook-studio",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "type": "module",
   "description": "A local-first web editor for LLM roleplay lorebooks.",
@@ -8,6 +8,12 @@
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "test": "node --test",
-    "check": "node --check src/main.js && node --check src/store.js && node --check src/schema.js && node --check src/storage.js && node --check src/format.js && node --check src/sample.js && node --check src/utils.js && node --check src/validation.js && node --check src/overview.js && node --check src/templates.js && node --check src/diff.js && node --check src/merge.js && node --check src/formats/index.js && node --check src/formats/helpers.js && node --check src/formats/native.js && node --check src/formats/chub.js && node --check src/formats/sillytavern.js && node --check src/ui/editor.js && node --check src/ui/diff.js && node --check src/ui/overlays.js && node --check src/ui/sidebar.js"
+    "test:e2e": "node --no-warnings e2e/run.mjs",
+    "test:all": "npm test && npm run test:e2e",
+    "check": "node scripts/check.mjs",
+    "lint": "node scripts/lint.mjs",
+    "format": "node scripts/format.mjs",
+    "format:write": "node scripts/format.mjs --write",
+    "release:check": "node scripts/release-check.mjs"
   }
 }

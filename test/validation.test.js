@@ -12,7 +12,7 @@ function createBook(entries) {
   }).books[0];
 }
 
-test("reports empty content and missing trigger keys", () => {
+test("reports empty content and unreachable enabled entries", () => {
   const book = createBook([
     { id: "entry_empty", title: "Empty", content: "   ", keys: [], order: 10 },
     { id: "entry_constant", title: "Constant", content: "Always present", constant: true, keys: [], order: 20 }
@@ -23,25 +23,42 @@ test("reports empty content and missing trigger keys", () => {
     issues.map((issue) => [issue.entryId, issue.code]),
     [
       ["entry_empty", "emptyContent"],
-      ["entry_empty", "missingKeys"]
+      ["entry_empty", "unreachable"]
     ]
   );
   assert.equal(issues[0].label, VALIDATION_LABELS.emptyContent);
-  assert.equal(issues[1].label, VALIDATION_LABELS.missingKeys);
+  assert.equal(issues[1].label, VALIDATION_LABELS.unreachable);
 });
 
-test("reports case-insensitive duplicate keys across entries", () => {
+test("reports case-insensitive key collisions across entries", () => {
   const book = createBook([
     { id: "entry_one", title: "One", content: "One", keys: ["Alpha", "shared"] },
     { id: "entry_two", title: "Two", content: "Two", keys: ["alpha", "shared"] }
   ]);
-  const issues = validateBook(book).filter((issue) => issue.code === "duplicateKeys");
+  const issues = validateBook(book).filter((issue) => issue.code === "keyCollision");
 
   assert.equal(issues.length, 2);
-  assert.match(issues[0].message, /Alpha/);
-  assert.match(issues[0].message, /shared/);
-  assert.match(issues[1].message, /alpha/);
   assert.equal(issues[0].entryTitle, "One");
+  assert.match(issues[0].message, /shared/);
+  assert.match(issues[0].message, /alpha/);
+  assert.match(issues[0].message, /Two/);
+  assert.equal(validateBook(book).filter((issue) => issue.code === "duplicateKeys").length, 0);
+});
+
+test("distinguishes unreachable enabled entries from disabled missing-key entries", () => {
+  const book = createBook([
+    { id: "entry_enabled", title: "Enabled", content: "Content", keys: [], enabled: true, order: 10 },
+    { id: "entry_disabled", title: "Disabled", content: "Content", keys: [], enabled: false, order: 20 }
+  ]);
+  const issues = validateBook(book);
+
+  assert.deepEqual(
+    issues.map((issue) => [issue.entryId, issue.code]),
+    [
+      ["entry_enabled", "unreachable"],
+      ["entry_disabled", "missingKeys"]
+    ]
+  );
 });
 
 test("reports trigger keys repeated within one entry", () => {

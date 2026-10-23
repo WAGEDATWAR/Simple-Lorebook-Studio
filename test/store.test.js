@@ -9,6 +9,7 @@ import {
   duplicateEntry,
   getActiveBook,
   getActiveEntry,
+  getEntryFilters,
   getSelectedEntryIds,
   getState,
   initStore,
@@ -18,7 +19,9 @@ import {
   selectEntryRange,
   setActiveEntry,
   setEntriesEnabled,
+  setEntryFilters,
   setSortMode,
+  toggleEntryFilter,
   toggleEntrySelection,
   undo,
   updateActiveBookDescription,
@@ -174,6 +177,36 @@ test("sorts entries without mutating manual order", () => {
   assert.deepEqual(sortEntries(entries, "updated").map((entry) => entry.updatedAt), [300, 200, 100]);
   assert.deepEqual(sortEntries(entries, "enabled").map((entry) => entry.enabled), [true, true, false]);
   assert.deepEqual(entries.map((entry) => entry.id), ["entry_1", "entry_2", "entry_3"]);
+});
+
+test("toggles entry filters with mutually exclusive status", () => {
+  initStore(createTestProject());
+
+  assert.deepEqual(getEntryFilters(), {
+    enabled: false,
+    disabled: false,
+    alwaysOn: false,
+    missingKeys: false
+  });
+
+  assert.equal(toggleEntryFilter("enabled"), true);
+  assert.equal(getEntryFilters().enabled, true);
+
+  assert.equal(toggleEntryFilter("disabled"), true);
+  assert.equal(getEntryFilters().disabled, true);
+  assert.equal(getEntryFilters().enabled, false);
+
+  assert.equal(toggleEntryFilter("disabled"), false);
+  assert.equal(getEntryFilters().disabled, false);
+
+  assert.deepEqual(setEntryFilters({ enabled: true, disabled: true, alwaysOn: true, missingKeys: true }), {
+    enabled: true,
+    disabled: false,
+    alwaysOn: true,
+    missingKeys: true
+  });
+
+  assert.equal(toggleEntryFilter("unknown"), false);
 });
 
 test("adds an entry from template fields with the next manual order", () => {

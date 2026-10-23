@@ -3,6 +3,8 @@ import { createBook, createEntry } from "./schema.js";
 const HISTORY_LIMIT = 60;
 const HISTORY_GROUP_MS = 900;
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
+export const ENTRY_FILTERS = ["enabled", "disabled", "alwaysOn", "missingKeys"];
+const ENTRY_FILTER_NAMES = new Set(ENTRY_FILTERS);
 
 let state = null;
 let past = [];
@@ -238,6 +240,14 @@ export function ensureSelections() {
     state.ui.sortMode = "manual";
   }
 
+  if (!state.ui.filters || typeof state.ui.filters !== "object") {
+    state.ui.filters = {};
+  }
+
+  for (const name of ENTRY_FILTERS) {
+    state.ui.filters[name] = state.ui.filters[name] === true;
+  }
+
   if (!state.books.length) {
     state.books.push(createBook({ name: "Untitled Lorebook" }));
   }
@@ -281,6 +291,56 @@ export function setSortMode(mode) {
     state.ui.sortMode = mode;
     clearSelection();
   }
+}
+
+export function getEntryFilters() {
+  const filters = {};
+
+  for (const name of ENTRY_FILTERS) {
+    filters[name] = state?.ui?.filters?.[name] === true;
+  }
+
+  return filters;
+}
+
+export function setEntryFilters(next) {
+  if (!state?.ui) {
+    return getEntryFilters();
+  }
+
+  const filters = {};
+
+  for (const name of ENTRY_FILTERS) {
+    filters[name] = next?.[name] === true;
+  }
+
+  if (filters.enabled && filters.disabled) {
+    filters.disabled = false;
+  }
+
+  state.ui.filters = filters;
+  return filters;
+}
+
+export function toggleEntryFilter(name) {
+  if (!ENTRY_FILTER_NAMES.has(name)) {
+    return false;
+  }
+
+  const next = getEntryFilters();
+  next[name] = !next[name];
+
+  if (name === "enabled" && next.enabled) {
+    next.disabled = false;
+  }
+
+  if (name === "disabled" && next.disabled) {
+    next.enabled = false;
+  }
+
+  setEntryFilters(next);
+  clearSelection();
+  return next[name];
 }
 
 export function addBook() {

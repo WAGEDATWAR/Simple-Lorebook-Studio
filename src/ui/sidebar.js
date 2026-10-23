@@ -34,6 +34,38 @@ function matchesQuery(entry, query) {
   return haystack.includes(query);
 }
 
+function matchesFilters(entry, filters) {
+  if (filters.enabled && !entry.enabled) {
+    return false;
+  }
+
+  if (filters.disabled && entry.enabled) {
+    return false;
+  }
+
+  if (filters.alwaysOn && !entry.constant) {
+    return false;
+  }
+
+  if (filters.missingKeys && (entry.constant || entry.keys.length)) {
+    return false;
+  }
+
+  return true;
+}
+
+function renderFilterChips(container, filters) {
+  if (!container) {
+    return;
+  }
+
+  for (const button of container.querySelectorAll("[data-filter]")) {
+    const active = filters[button.dataset.filter] === true;
+    button.setAttribute("aria-pressed", String(active));
+    button.classList.toggle("is-active", active);
+  }
+}
+
 function compactId(entry) {
   const sourceId = entry.extensions?.sourceId;
 
@@ -148,13 +180,15 @@ export function renderSidebar(refs) {
   const book = getActiveBook();
   const query = state.ui.searchQuery.trim().toLowerCase();
   const entries = book?.entries ?? [];
+  const filters = state.ui.filters ?? {};
+  const hasFilters = Object.values(filters).some(Boolean);
   const filtered = sortEntries(
-    entries.filter((entry) => matchesQuery(entry, query)),
+    entries.filter((entry) => matchesQuery(entry, query) && matchesFilters(entry, filters)),
     state.ui.sortMode
   );
   const scrollTop = refs.entryList.scrollTop;
   const selected = new Set(getSelectedEntryIds());
-  const canDrag = state.ui.sortMode === "manual" && !query;
+  const canDrag = state.ui.sortMode === "manual" && !query && !hasFilters;
 
   const options = state.books.map((item) => {
     const option = document.createElement("option");
@@ -166,7 +200,8 @@ export function renderSidebar(refs) {
   refs.bookSelect.replaceChildren(...options);
   refs.bookSelect.value = state.activeBookId ?? "";
   refs.entrySort.value = state.ui.sortMode;
-  refs.entryCount.textContent = query
+  renderFilterChips(refs.entryFilters, filters);
+  refs.entryCount.textContent = query || hasFilters
     ? `${filtered.length}/${entries.length}`
     : String(entries.length);
 
@@ -176,9 +211,11 @@ export function renderSidebar(refs) {
   if (!filtered.length) {
     const empty = document.createElement("div");
     empty.className = "entry-list-empty";
-    empty.textContent = entries.length
+    empty.textContent = query
       ? `No entries match "${state.ui.searchQuery.trim()}".`
-      : "No entries yet. Create one to start writing.";
+      : hasFilters
+        ? "No entries match the current filters."
+        : "No entries yet. Create one to start writing.";
     refs.entryList.append(empty);
     refs.entryList.scrollTop = 0;
     return;

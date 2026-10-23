@@ -1,7 +1,9 @@
 export const VALIDATION_LABELS = {
   emptyContent: "Empty content",
   duplicateKeys: "Duplicate keys",
+  keyCollision: "Key collisions",
   missingKeys: "Missing keys",
+  unreachable: "Unreachable entries",
   orderCollision: "Order collision"
 };
 
@@ -47,6 +49,7 @@ export function validateBook(book) {
     orderOwners.get(entry.order).push(entry);
   }
 
+  const entryTitles = new Map(book.entries.map((entry) => [entry.id, entryLabel(entry)]));
   const issues = [];
 
   for (const entry of book.entries) {
@@ -63,17 +66,27 @@ export function validateBook(book) {
     }
 
     if (!entry.constant && !entry.keys.length) {
-      issues.push({
-        code: "missingKeys",
-        label: VALIDATION_LABELS.missingKeys,
-        entryId: entry.id,
-        entryTitle: title,
-        message: "Add trigger keys or make the entry always on."
-      });
+      if (entry.enabled) {
+        issues.push({
+          code: "unreachable",
+          label: VALIDATION_LABELS.unreachable,
+          entryId: entry.id,
+          entryTitle: title,
+          message: "This entry is enabled but has no trigger keys, so it can never activate."
+        });
+      } else {
+        issues.push({
+          code: "missingKeys",
+          label: VALIDATION_LABELS.missingKeys,
+          entryId: entry.id,
+          entryTitle: title,
+          message: "Add trigger keys or make the entry always on before enabling it."
+        });
+      }
     }
 
     const localKeys = new Map();
-    const repeatedKeys = new Map();
+    const repeatedKeys = new Set();
 
     for (const key of entry.keys) {
       const normalized = normalizeKey(key);
@@ -83,32 +96,41 @@ export function validateBook(book) {
       }
 
       if (localKeys.has(normalized)) {
-        if (!repeatedKeys.has(normalized)) {
-          repeatedKeys.set(normalized, localKeys.get(normalized));
-        }
+        repeatedKeys.add(normalized);
       } else {
         localKeys.set(normalized, key.trim());
-      }
-
-      if ((keyOwners.get(normalized)?.size ?? 0) > 1 && !repeatedKeys.has(normalized)) {
-        repeatedKeys.set(normalized, key.trim());
       }
     }
 
     if (repeatedKeys.size) {
-      const keys = [...repeatedKeys.values()].join(", ");
-      const shared = [...repeatedKeys.keys()].some((key) => (
-        (keyOwners.get(key)?.size ?? 0) > 1
-      ));
-
       issues.push({
         code: "duplicateKeys",
         label: VALIDATION_LABELS.duplicateKeys,
         entryId: entry.id,
         entryTitle: title,
-        message: shared
-          ? `Also used by another entry: ${keys}.`
-          : `Repeated in this entry: ${keys}.`
+        message: `Repeated in this entry: ${[...repeatedKeys].join(", ")}.`
+      });
+    }
+
+    const sharedKeys = [...localKeys.keys()].filter((key) => (keyOwners.get(key)?.size ?? 0) > 1);
+
+    if (sharedKeys.length) {
+      const others = new Set();
+
+      for (const key of sharedKeys) {
+        for (const ownerId of keyOwners.get(key) ?? []) {
+          if (ownerId !== entry.id) {
+            others.add(entryTitles.get(ownerId) ?? "another entry");
+          }
+        }
+      }
+
+      issues.push({
+        code: "keyCollision",
+        label: VALIDATION_LABELS.keyCollision,
+        entryId: entry.id,
+        entryTitle: title,
+        message: `Shared with ${[...others].join(", ")}: ${sharedKeys.join(", ")}.`
       });
     }
 

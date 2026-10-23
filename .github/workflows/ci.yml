@@ -24,5 +24,14 @@ jobs:
       - name: Syntax check
         run: npm run check
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format
+
       - name: Run tests
         run: npm test
+
+      - name: End-to-end tests
+        run: npm run test:e2e
