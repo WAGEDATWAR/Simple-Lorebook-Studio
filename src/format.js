@@ -1,9 +1,16 @@
 import { EXPORT_FORMATS, parseLorebookData, serializeLorebook } from "./formats/index.js";
+import { checkImportText, checkProjectLimits } from "./limits.js";
 import { APP_ID, SCHEMA_VERSION } from "./schema.js";
 
 export { EXPORT_FORMATS, serializeLorebook };
 
 export function parseProject(text, options = {}) {
+  const size = checkImportText(text);
+
+  if (!size.ok) {
+    return size;
+  }
+
   let data;
 
   try {
@@ -12,7 +19,19 @@ export function parseProject(text, options = {}) {
     return { ok: false, error: "That file isn't valid JSON." };
   }
 
-  return parseLorebookData(data, options);
+  const parsed = parseLorebookData(data, options);
+
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const limits = checkProjectLimits(parsed.project);
+
+  if (!limits.ok) {
+    return limits;
+  }
+
+  return parsed;
 }
 
 export function buildExport(state) {

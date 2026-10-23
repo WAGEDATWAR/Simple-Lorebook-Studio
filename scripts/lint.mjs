@@ -58,6 +58,18 @@ function lintCode(file, text) {
     if (isSource && /console\.(log|info|debug)\s*\(/.test(line)) {
       problems.push(`line ${number}: remove the console statement`);
     }
+
+    if (isSource && /\.(innerHTML|outerHTML)\s*=/.test(line)) {
+      problems.push(`line ${number}: use textContent instead of ${line.includes("outerHTML") ? "outerHTML" : "innerHTML"}`);
+    }
+
+    if (isSource && /insertAdjacentHTML\s*\(/.test(line)) {
+      problems.push(`line ${number}: avoid insertAdjacentHTML; build DOM nodes with textContent`);
+    }
+
+    if (isSource && /document\.write\s*\(/.test(line)) {
+      problems.push(`line ${number}: avoid document.write`);
+    }
   });
 
   return problems;

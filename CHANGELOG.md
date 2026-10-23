@@ -4,6 +4,18 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.9] - 2026-10-22
+
+### Added
+
+- Standalone character-book export alongside the native, SillyTavern, and Chub targets.
+- Import size and schema limits (25 MB, 1000 lorebooks, 50,000 entries) with clear rejection messages.
+
+### Changed
+
+- A lint rule now forbids `innerHTML`, `insertAdjacentHTML`, and `document.write` in source, guaranteeing imported data is rendered as text.
+- Reorganized `TODO.md`: `Next Up` now tracks only active work with effort values, finished items are archived into topic sections, and a Suggestions section was added.
+
 ## [0.5.8] - 2026-10-22
 
 ### Added

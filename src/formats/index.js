@@ -1,10 +1,11 @@
 import { slugify } from "../utils.js";
+import { characterBookAdapter } from "./characterBook.js";
 import { chubAdapter } from "./chub.js";
 import { isRecord } from "./helpers.js";
 import { nativeAdapter } from "./native.js";
 import { sillyTavernAdapter } from "./sillytavern.js";
 
-const adapters = [nativeAdapter, chubAdapter, sillyTavernAdapter];
+const adapters = [nativeAdapter, chubAdapter, sillyTavernAdapter, characterBookAdapter];
 
 export const EXPORT_FORMATS = adapters
   .filter((adapter) => adapter.capabilities?.bookExport)

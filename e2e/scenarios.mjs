@@ -384,6 +384,21 @@ export const scenarios = [
     }
   },
   {
+    name: "exports a standalone character book",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#export-btn");
+      await page.waitFor('document.querySelector("#export-dialog")?.open');
+      await page.waitFor('document.querySelector(\'#export-options [data-export-format="characterbook"]\')');
+
+      await page.click('#export-options [data-export-format="characterbook"]');
+      await page.waitFor('!document.querySelector("#export-dialog")?.open');
+      const toast = await page.evaluate('document.querySelector(".toast")?.textContent ?? ""');
+      assert.match(toast, /Character book/);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "reminds about backups and records an export",
     async run(page) {
       await resetApp(page);

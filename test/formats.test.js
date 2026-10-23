@@ -346,10 +346,49 @@ test("keeps author notes in native data and out of interchange exports", () => {
   assert.equal(restored.project.books[0].entries[0].notes, "Private author notes");
 });
 
+test("exports a standalone character book and reimports it", () => {
+  const imported = parseProject(readFixture("sillytavern-world-info.json"));
+  const book = imported.project.books[0];
+  const exported = serializeLorebook("characterbook", book);
+
+  assert.equal(exported.ok, true);
+  assert.equal(exported.filename, "harbor-secrets-character-book.json");
+  assert.equal(exported.data.entries.length, book.entries.length);
+  assert.equal(exported.data.entries[0].id, 0);
+  assert.equal(exported.data.entries[0].insertion_order, book.entries[0].order);
+  assert.ok(Array.isArray(exported.data.entries[0].keys));
+  assert.equal(exported.data.scan_depth, 4);
+  assert.equal(exported.data.token_budget, 2048);
+
+  const restored = parseProject(JSON.stringify(exported.data));
+
+  assert.equal(restored.ok, true);
+  assert.equal(restored.formatId, "chub");
+  assert.equal(restored.project.books[0].entries.length, book.entries.length);
+  assert.equal(restored.project.books[0].entries[0].title, book.entries[0].title);
+  assert.deepEqual(restored.project.books[0].entries[0].keys, book.entries[0].keys);
+  assert.equal(restored.project.books[0].entries[0].content, book.entries[0].content);
+});
+
+test("falls back unsupported character book positions to before the character", () => {
+  const project = createProject({
+    books: [{
+      name: "Depth Book",
+      entries: [{ title: "Deep", keys: ["deep"], content: "Deep content", position: "at_depth", order: 5 }]
+    }]
+  });
+  const exported = serializeLorebook("characterbook", project.books[0]);
+
+  assert.equal(exported.ok, true);
+  assert.equal(exported.data.entries[0].position, "before_char");
+  assert.equal(exported.warnings.length, 1);
+  assert.match(exported.warnings[0], /doesn't support/);
+});
+
 test("publishes export capabilities for every book format", () => {
   assert.deepEqual(
     EXPORT_FORMATS.map((format) => format.id),
-    ["native", "chub", "sillytavern"]
+    ["native", "chub", "sillytavern", "characterbook"]
   );
 
   for (const format of EXPORT_FORMATS) {

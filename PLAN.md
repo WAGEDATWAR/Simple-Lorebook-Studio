@@ -51,8 +51,10 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - File System Access API support for opening and saving project files in place, with the topbar Open/Save controls and `Ctrl+O`/`Ctrl+Shift+S` shown only when the browser supports the API.
 - A periodic backup reminder banner when no project backup has been exported for a week, with a three-day snooze on dismiss.
 - Storage usage reporting in the export dialog: active backend, project size, snapshot count and size, and the browser usage/quota estimate.
-- Single-book export to native, SillyTavern World Info v2, and Chub JSON.
+- Single-book export to native, SillyTavern World Info v2, Chub, and standalone character-book JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
+- Import size and schema limits (25 MB, 1000 lorebooks, 50,000 entries) with clear rejection messages before parsing.
+- All imported and stored data is rendered with `textContent`; a lint rule forbids `innerHTML`, `insertAdjacentHTML`, and `document.write` in source.
 - Import preview with detected format, file name, book and entry counts, adapter warnings, and a diff of added, removed, and changed books and entries.
 - Import merge strategies: replace the project, append imported entries to lorebooks matched by name, or merge entries matched by title.
 - Automatic pre-import backup with saved backup metadata and one-click restore.
@@ -107,7 +109,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/templates.js` | Built-in entry templates and patch builders |
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
-| `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
+| `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, native, and character-book adapters |
+| `src/limits.js` | Import size and schema limits |
 | `src/sample.js` | First-run demo project |
 | `src/ui/sidebar.js` | Book switcher, search with match highlighting, tag filters, sorting, and selected/drag/pinned entry rendering |
 | `src/ui/editor.js` | Editor population and statistics |
@@ -118,6 +121,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/overview.test.js` | Book metrics, token totals, and key coverage tests |
 | `test/templates.test.js` | Built-in template integrity and independent patch tests |
 | `test/keys.test.js` | Regex-key detection, parsing, and invalid-pattern fallback tests |
+| `test/limits.test.js` | Import size and project schema limit tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
@@ -457,8 +461,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 72 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 79 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
@@ -494,6 +498,7 @@ Planned checks:
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Frontend schemas drift | Broken or lossy imports | Adapter isolation, fixtures, schema version checks |
+| Oversized or hostile import files | Memory exhaustion or HTML injection | Import size/schema limits and text-only rendering enforced by lint |
 | Browser storage quota | Failed saves with large books | IndexedDB primary storage, save-state error, export backups, storage usage reporting |
 | File System Access is Chrome-only | Open/Save unavailable elsewhere | Feature-detect and hide controls; Import/Export remain the fallback |
 | Destructive import | Data loss | Confirmation, preview phase, automatic pre-import backup |

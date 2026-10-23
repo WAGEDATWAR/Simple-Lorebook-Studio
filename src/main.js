@@ -58,6 +58,7 @@ import {
   saveRevision
 } from "./storage.js";
 import { diffProjects } from "./diff.js";
+import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { normalizeTagList } from "./schema.js";
 import { buildBookOverview } from "./overview.js";
@@ -1735,6 +1736,11 @@ function importResultMessage(strategy, parsed, stats, entryCount) {
 
 async function handleImport(file, { fileHandle = null } = {}) {
   if (!file) {
+    return;
+  }
+
+  if (Number.isFinite(file.size) && file.size > MAX_IMPORT_BYTES) {
+    toast(`That file is too large (about ${Math.round(file.size / (1024 * 1024))} MB). The import limit is 25 MB.`, "error");
     return;
   }
 
