@@ -61,6 +61,19 @@ test("distinguishes unreachable enabled entries from disabled missing-key entrie
   );
 });
 
+test("reports invalid regex keys with a plain-text fallback note", () => {
+  const book = createBook([
+    { id: "entry_regex", title: "Regex", content: "Content", keys: ["/[unterminated/"], order: 10 },
+    { id: "entry_valid", title: "Valid", content: "Content", keys: ["/sword|blade/i"], order: 20 }
+  ]);
+  const issues = validateBook(book).filter((issue) => issue.code === "invalidRegex");
+
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].entryId, "entry_regex");
+  assert.equal(issues[0].label, VALIDATION_LABELS.invalidRegex);
+  assert.match(issues[0].message, /Treated as plain text/);
+});
+
 test("reports trigger keys repeated within one entry", () => {
   const book = createBook([
     { id: "entry_one", title: "Repeated", content: "Content", keys: ["echo", "Echo"] }

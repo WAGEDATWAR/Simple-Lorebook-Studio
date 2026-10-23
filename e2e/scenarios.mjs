@@ -39,6 +39,27 @@ async function importFile(page, path) {
   await page.waitFor('document.querySelector("#diff-dialog")?.open');
 }
 
+async function addChipKey(page, selector, value) {
+  await page.evaluate(`(() => {
+    const input = document.querySelector(${JSON.stringify(selector)});
+    input.focus();
+    input.value = ${JSON.stringify(value)};
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+    return true;
+  })()`);
+}
+
+async function pasteChipKeys(page, selector, text) {
+  await page.evaluate(`(() => {
+    const input = document.querySelector(${JSON.stringify(selector)});
+    input.focus();
+    const data = new DataTransfer();
+    data.setData("text", ${JSON.stringify(text)});
+    input.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+    return true;
+  })()`);
+}
+
 async function readIndexedDbProject(page) {
   return page.evaluate(`(async () => {
     const database = await new Promise((resolve, reject) => {
@@ -199,6 +220,62 @@ export const scenarios = [
     }
   },
   {
+    name: "edits trigger keys as chips with paste support",
+    async run(page) {
+      await resetApp(page);
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 3');
+
+      await addChipKey(page, "#entry-keys-input", "harbor");
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 4');
+
+      await pasteChipKeys(page, "#entry-keys-input", "alpha, beta\ngamma");
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 7');
+
+      await page.evaluate('document.querySelector("#entry-keys .key-chip-remove").click(); true');
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 6');
+
+      await addChipKey(page, "#entry-keys-input", "/[bad/");
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 7');
+      const invalid = await page.evaluate('Boolean(document.querySelector("#entry-keys .key-chip.is-regex-invalid"))');
+      assert.equal(invalid, true);
+
+      await page.waitFor('document.querySelector("#save-state")?.dataset.state === "saved"');
+      await page.reload();
+      await page.waitFor('document.querySelector("#book-name")?.value');
+      await page.waitFor('document.querySelectorAll("#entry-keys .key-chip").length === 7');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "sets insertion order for selected entries",
+    async run(page) {
+      await resetApp(page);
+      const firstId = await page.evaluate('document.querySelector(".entry-card").dataset.entryId');
+      await pressKey(page, `[data-entry-id="${firstId}"]`, "ArrowDown", { ctrl: true });
+      await page.waitFor('document.querySelector("#bulk-bar")?.hidden === false');
+
+      await page.evaluate(`(() => {
+        const input = document.querySelector("#bulk-order-input");
+        input.value = "500";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        return true;
+      })()`);
+      await page.click("#bulk-order-apply");
+      await page.waitFor('document.querySelector("#entry-order")?.value === "500"');
+
+      await page.click("#bulk-order-up");
+      await page.waitFor('document.querySelector("#entry-order")?.value === "510"');
+
+      await page.evaluate(`(() => {
+        const cards = [...document.querySelectorAll(".entry-card")];
+        cards[1].click();
+        return true;
+      })()`);
+      await page.waitFor('document.querySelector("#entry-order")?.value === "510"');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "stores the project in IndexedDB",
     async run(page) {
       await resetApp(page);
@@ -307,12 +384,10 @@ export const scenarios = [
       })()`);
       await page.waitFor('document.querySelector("#diff-controls select").value === "append"');
       await page.click("#diff-accept");
-      await page.waitFor('document.querySelectorAll("#book-select option").length === 2');
+      await page.waitFor('document.querySelector(".toast")?.textContent.includes("Appended")');
 
       const state = await appState(page);
       assert.deepEqual(state.books, ["Aurora Vale", "Harbor Secrets"]);
-      const toast = await page.evaluate('document.querySelector(".toast")?.textContent ?? ""');
-      assert.match(toast, /Appended/);
       assert.deepEqual(page.errors, []);
     }
   },

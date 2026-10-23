@@ -30,8 +30,8 @@ export function renderEditor(refs) {
 
   refs.entryTitle.value = entry.title;
   refs.entryEnabled.checked = entry.enabled;
-  refs.entryKeys.value = entry.keys.join(", ");
-  refs.entrySecondaryKeys.value = entry.secondaryKeys.join(", ");
+  refs.keyChips?.setKeys(entry.keys);
+  refs.secondaryKeyChips?.setKeys(entry.secondaryKeys);
   refs.entryContent.value = entry.content;
   refs.entryNotes.value = entry.notes;
   refs.entryOrder.value = String(entry.order);

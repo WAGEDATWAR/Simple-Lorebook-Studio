@@ -1,7 +1,10 @@
+import { isRegexKey, parseRegexKey } from "./keys.js";
+
 export const VALIDATION_LABELS = {
   emptyContent: "Empty content",
   duplicateKeys: "Duplicate keys",
   keyCollision: "Key collisions",
+  invalidRegex: "Invalid regex keys",
   missingKeys: "Missing keys",
   unreachable: "Unreachable entries",
   orderCollision: "Order collision"
@@ -109,6 +112,18 @@ export function validateBook(book) {
         entryId: entry.id,
         entryTitle: title,
         message: `Repeated in this entry: ${[...repeatedKeys].join(", ")}.`
+      });
+    }
+
+    const invalidRegexKeys = entry.keys.filter((key) => isRegexKey(key) && !parseRegexKey(key).ok);
+
+    if (invalidRegexKeys.length) {
+      issues.push({
+        code: "invalidRegex",
+        label: VALIDATION_LABELS.invalidRegex,
+        entryId: entry.id,
+        entryTitle: title,
+        message: `Treated as plain text: ${invalidRegexKeys.join(", ")}.`
       });
     }
 

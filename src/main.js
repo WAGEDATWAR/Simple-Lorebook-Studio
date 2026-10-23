@@ -8,6 +8,7 @@ import {
 import {
   addBook,
   addEntry,
+  adjustEntriesOrder,
   canRedo,
   canUndo,
   clearSelection,
@@ -30,6 +31,7 @@ import {
   setActiveBook,
   setActiveEntry,
   setEntriesEnabled,
+  setEntriesOrder,
   setEntryFilters,
   setSearchQuery,
   setSortMode,
@@ -56,6 +58,7 @@ import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
 import { showDiffDialog } from "./ui/diff.js";
 import { renderEditor, syncEntryStats } from "./ui/editor.js";
+import { createKeyChips } from "./ui/keyChips.js";
 import { confirmAction, toast } from "./ui/overlays.js";
 import { renderSidebar } from "./ui/sidebar.js";
 import { clamp } from "./utils.js";
@@ -135,6 +138,10 @@ const refs = {
   bulkDisableBtn: document.querySelector("#bulk-disable-btn"),
   bulkDeleteBtn: document.querySelector("#bulk-delete-btn"),
   bulkClearBtn: document.querySelector("#bulk-clear-btn"),
+  bulkOrderDownBtn: document.querySelector("#bulk-order-down"),
+  bulkOrderUpBtn: document.querySelector("#bulk-order-up"),
+  bulkOrderApplyBtn: document.querySelector("#bulk-order-apply"),
+  bulkOrderInput: document.querySelector("#bulk-order-input"),
   addEntryBtn: document.querySelector("#add-entry-btn"),
   emptyAddBtn: document.querySelector("#empty-add-btn"),
   editorEmpty: document.querySelector("#editor-empty"),
@@ -147,8 +154,10 @@ const refs = {
   entryEnabled: document.querySelector("#entry-enabled"),
   duplicateEntryBtn: document.querySelector("#duplicate-entry-btn"),
   deleteEntryBtn: document.querySelector("#delete-entry-btn"),
-  entryKeys: document.querySelector("#entry-keys"),
-  entrySecondaryKeys: document.querySelector("#entry-secondary-keys"),
+  entryKeysContainer: document.querySelector("#entry-keys"),
+  entryKeysInput: document.querySelector("#entry-keys-input"),
+  entrySecondaryKeysContainer: document.querySelector("#entry-secondary-keys"),
+  entrySecondaryKeysInput: document.querySelector("#entry-secondary-keys-input"),
   entryContent: document.querySelector("#entry-content"),
   entryNotes: document.querySelector("#entry-notes"),
   entryStatChars: document.querySelector("#entry-stat-chars"),
@@ -163,6 +172,28 @@ const refs = {
   entryCaseSensitive: document.querySelector("#entry-case-sensitive"),
   entryWholeWords: document.querySelector("#entry-whole-words")
 };
+
+refs.keyChips = createKeyChips({
+  container: refs.entryKeysContainer,
+  input: refs.entryKeysInput,
+  label: "trigger key",
+  onChange: (keys) => {
+    updateActiveEntry({ keys });
+    renderSidebar(refs);
+    scheduleSave();
+  }
+});
+
+refs.secondaryKeyChips = createKeyChips({
+  container: refs.entrySecondaryKeysContainer,
+  input: refs.entrySecondaryKeysInput,
+  label: "secondary key",
+  onChange: (keys) => {
+    updateActiveEntry({ secondaryKeys: keys });
+    renderSidebar(refs);
+    scheduleSave();
+  }
+});
 
 let saveTimer = 0;
 let saveFailed = false;
@@ -1053,13 +1084,6 @@ function clearSearch() {
   setSearchQuery("");
 }
 
-function readKeys(value) {
-  return value
-    .split(",")
-    .map((key) => key.trim())
-    .filter(Boolean);
-}
-
 function visibleEntryIds() {
   return Array.from(refs.entryList.querySelectorAll("[data-entry-id]"))
     .map((element) => element.dataset.entryId);
@@ -1310,6 +1334,50 @@ function handleBulkEnabled(enabled) {
   renderAll();
   scheduleSave();
   toast(`${changed} ${changed === 1 ? "entry" : "entries"} ${enabled ? "enabled" : "disabled"}`, "success");
+}
+
+function handleBulkOrderSet() {
+  const ids = getSelectedEntryIds();
+
+  if (!ids.length) {
+    return;
+  }
+
+  const value = Number(refs.bulkOrderInput.value);
+
+  if (!Number.isFinite(value)) {
+    toast("Enter a valid insertion order.", "error");
+    return;
+  }
+
+  const changed = setEntriesOrder(ids, value);
+
+  if (!changed) {
+    toast("Selected entries already use that insertion order.");
+    return;
+  }
+
+  renderAll();
+  scheduleSave();
+  toast(`Insertion order set to ${Math.round(value)} for ${changed} ${changed === 1 ? "entry" : "entries"}`, "success");
+}
+
+function handleBulkOrderShift(delta) {
+  const ids = getSelectedEntryIds();
+
+  if (!ids.length) {
+    return;
+  }
+
+  const changed = adjustEntriesOrder(ids, delta);
+
+  if (!changed) {
+    return;
+  }
+
+  renderAll();
+  scheduleSave();
+  toast(`Insertion order ${delta > 0 ? "increased" : "decreased"} by ${Math.abs(delta)} for ${changed} ${changed === 1 ? "entry" : "entries"}`, "success");
 }
 
 async function handleBulkDelete() {
@@ -1775,6 +1843,25 @@ refs.bulkDeleteBtn.addEventListener("click", () => {
   handleBulkDelete();
 });
 
+refs.bulkOrderApplyBtn.addEventListener("click", () => {
+  handleBulkOrderSet();
+});
+
+refs.bulkOrderDownBtn.addEventListener("click", () => {
+  handleBulkOrderShift(-10);
+});
+
+refs.bulkOrderUpBtn.addEventListener("click", () => {
+  handleBulkOrderShift(10);
+});
+
+refs.bulkOrderInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    handleBulkOrderSet();
+  }
+});
+
 refs.bulkClearBtn.addEventListener("click", () => {
   clearSelection();
   renderSidebar(refs);
@@ -1793,18 +1880,6 @@ refs.entryTitle.addEventListener("input", (event) => {
 
 refs.entryEnabled.addEventListener("change", (event) => {
   updateActiveEntry({ enabled: event.target.checked });
-  renderSidebar(refs);
-  scheduleSave();
-});
-
-refs.entryKeys.addEventListener("input", (event) => {
-  updateActiveEntry({ keys: readKeys(event.target.value) });
-  renderSidebar(refs);
-  scheduleSave();
-});
-
-refs.entrySecondaryKeys.addEventListener("input", (event) => {
-  updateActiveEntry({ secondaryKeys: readKeys(event.target.value) });
   renderSidebar(refs);
   scheduleSave();
 });

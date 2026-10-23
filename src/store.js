@@ -1,4 +1,5 @@
 import { createBook, createEntry } from "./schema.js";
+import { clamp } from "./utils.js";
 
 const HISTORY_LIMIT = 60;
 const HISTORY_GROUP_MS = 900;
@@ -553,6 +554,59 @@ export function setEntriesEnabled(ids, enabled) {
 
   for (const entry of changed) {
     entry.enabled = enabled;
+    entry.updatedAt = now;
+  }
+
+  book.updatedAt = now;
+  return changed.length;
+}
+
+export function setEntriesOrder(ids, order) {
+  const book = getActiveBook();
+
+  if (!book) {
+    return 0;
+  }
+
+  const targets = new Set(ids);
+  const next = clamp(Math.round(Number(order) || 0), 0, 9999);
+  const changed = book.entries.filter((entry) => targets.has(entry.id) && entry.order !== next);
+
+  if (!changed.length) {
+    return 0;
+  }
+
+  captureHistory(`bulk-order:${next}`, false);
+  const now = Date.now();
+
+  for (const entry of changed) {
+    entry.order = next;
+    entry.updatedAt = now;
+  }
+
+  book.updatedAt = now;
+  return changed.length;
+}
+
+export function adjustEntriesOrder(ids, delta) {
+  const book = getActiveBook();
+
+  if (!book) {
+    return 0;
+  }
+
+  const targets = new Set(ids);
+  const changed = book.entries.filter((entry) => targets.has(entry.id));
+
+  if (!changed.length) {
+    return 0;
+  }
+
+  captureHistory(`bulk-order-shift:${delta}`, false);
+  const now = Date.now();
+
+  for (const entry of changed) {
+    entry.order = clamp(Math.round(entry.order + delta), 0, 9999);
     entry.updatedAt = now;
   }
 

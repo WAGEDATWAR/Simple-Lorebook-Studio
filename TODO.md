@@ -36,14 +36,14 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 ## Editor and Authoring
 
-- [ ] [P1] Replace the comma-separated key inputs with editable key chips while keeping paste support.
+- [x] [P1] Replace the comma-separated key inputs with editable key chips while keeping paste support.
 - [x] [P1] Add multi-select and bulk enable, disable, and delete.
-- [ ] [P1] Add bulk insertion-order changes for selected entries.
+- [x] [P1] Add bulk insertion-order changes for selected entries.
 - [x] [P1] Add sort modes: manual, title, insertion order, last edited, and enabled state.
 - [x] [P1] Add accessible reordering with `Alt+ArrowUp` and `Alt+ArrowDown` in manual order.
 - [x] [P1] Add built-in entry templates and a template picker.
 - [ ] [P2] Add a "duplicate as template" flow for custom reusable entries.
-- [ ] [P1] Support regex keys with validation and a plain-text fallback.
+- [x] [P1] Support regex keys with validation and a plain-text fallback.
 - [x] [P2] Add a diff view when replacing imported entries and when comparing revision snapshots.
 - [x] [P2] Add an import merge mode that reuses the diff view.
 - [x] [P2] Add a notes or author-only field separate from injected content.

@@ -34,11 +34,14 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Lorebook create, rename, switch, and delete.
 - Editable book descriptions stored with each lorebook and previewed in the sidebar.
 - Lorebook information section with the description, overview, and validation controls above entry search.
-- Book-level validation for empty content, repeated keys, key collisions across entries, missing keys, unreachable enabled entries, and insertion-order collisions, with jump-to-entry issue links.
+- Book-level validation for empty content, repeated keys, key collisions across entries, invalid regex keys, missing keys, unreachable enabled entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
 - Search across title, content, trigger keys, secondary keys, and author notes.
 - Entry fields: title, trigger keys, secondary keys, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
+- Trigger and secondary keys are edited as chips: add with Enter/comma, paste comma- or newline-separated lists, remove with the chip button or Backspace, and double-click a chip to edit it.
+- Slash-delimited keys are treated as regular expressions, highlighted in the editor, and validated with a plain-text fallback when the pattern is invalid.
+- Bulk insertion-order controls set or shift the order of selected entries.
 - Live character, word, and approximate token counts.
 - A book overview with entry counts, approximate total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, and the longest entry.
 - Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
@@ -97,6 +100,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/validation.js` | Book-level content, key, and insertion-order issue detection |
 | `src/overview.js` | Book metrics, token summaries, and key coverage |
 | `src/templates.js` | Built-in entry templates and patch builders |
+| `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
 | `src/sample.js` | First-run demo project |
@@ -108,7 +112,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/schema.test.js` | Normalization, defaults, clamping, and active-ID resolution tests |
 | `test/overview.test.js` | Book metrics, token totals, and key coverage tests |
 | `test/templates.test.js` | Built-in template integrity and independent patch tests |
-| `test/validation.test.js` | Empty content, duplicate key, key collision, missing key, unreachable entry, and order collision tests |
+| `test/keys.test.js` | Regex-key detection, parsing, and invalid-pattern fallback tests |
+| `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
 | `test/store.test.js` | History, description edits, duplication, selection, bulk actions, reordering, and sorting tests |
@@ -366,6 +371,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Focus returns to the next entry after deletion and to the trigger control after a dialog closes; list scroll and focus survive re-renders.
 - Entry cards show compact IDs, with the full internal ID exposed in a tooltip.
 - Inline options are chips; grouped numeric/enumerated settings live in one injection row.
+- Trigger and secondary keys use chip editors with paste support, and regex keys are visually distinguished from plain keys.
+- The bulk bar sets or shifts insertion order for the selected entries alongside enable, disable, delete, and clear.
 - Toasts confirm imports, exports, save failures, duplication, bulk changes, and deletions. A persistent banner with export and retry actions appears while local saves are failing.
 - Empty states explain the next action and expose the primary CTA.
 
@@ -439,8 +446,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 64 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 70 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.

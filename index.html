@@ -182,6 +182,14 @@
 
           <div id="bulk-bar" class="bulk-bar" aria-live="polite" hidden>
             <span id="bulk-count" class="bulk-count">0 selected</span>
+            <div class="bulk-order">
+              <span class="bulk-order-label">Order</span>
+              <button id="bulk-order-down" class="icon-btn" type="button" title="Decrease insertion order by 10" aria-label="Decrease insertion order by 10">&minus;</button>
+              <label class="sr-only" for="bulk-order-input">Insertion order for selected entries</label>
+              <input id="bulk-order-input" class="bulk-order-input" type="number" min="0" max="9999" step="10" value="100">
+              <button id="bulk-order-up" class="icon-btn" type="button" title="Increase insertion order by 10" aria-label="Increase insertion order by 10">+</button>
+              <button id="bulk-order-apply" class="btn" type="button">Set</button>
+            </div>
             <div class="bulk-actions">
               <button id="bulk-enable-btn" class="icon-btn" type="button" title="Enable selected entries" aria-label="Enable selected entries">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -273,12 +281,16 @@
               <section class="editor-section">
                 <div class="field-grid">
                   <div class="field">
-                    <label for="entry-keys">Trigger keys <span class="hint">comma separated</span></label>
-                    <input id="entry-keys" type="text" placeholder="sword, blade, weapon" autocomplete="off" spellcheck="false">
+                    <label for="entry-keys-input">Trigger keys <span class="hint">Enter or comma to add</span></label>
+                    <div id="entry-keys" class="key-chips" role="list">
+                      <input id="entry-keys-input" class="key-chips-input" type="text" placeholder="sword, blade, weapon" autocomplete="off" spellcheck="false">
+                    </div>
                   </div>
                   <div class="field">
-                    <label for="entry-secondary-keys">Secondary keys <span class="hint">optional</span></label>
-                    <input id="entry-secondary-keys" type="text" placeholder="inner voice, thought" autocomplete="off" spellcheck="false">
+                    <label for="entry-secondary-keys-input">Secondary keys <span class="hint">optional</span></label>
+                    <div id="entry-secondary-keys" class="key-chips" role="list">
+                      <input id="entry-secondary-keys-input" class="key-chips-input" type="text" placeholder="inner voice, thought" autocomplete="off" spellcheck="false">
+                    </div>
                   </div>
                 </div>
               </section>

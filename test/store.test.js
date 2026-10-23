@@ -3,6 +3,7 @@ import test from "node:test";
 import { createProject } from "../src/schema.js";
 import {
   addEntry,
+  adjustEntriesOrder,
   canRedo,
   canUndo,
   deleteEntries,
@@ -19,6 +20,7 @@ import {
   selectEntryRange,
   setActiveEntry,
   setEntriesEnabled,
+  setEntriesOrder,
   setEntryFilters,
   setSortMode,
   toggleEntryFilter,
@@ -177,6 +179,25 @@ test("sorts entries without mutating manual order", () => {
   assert.deepEqual(sortEntries(entries, "updated").map((entry) => entry.updatedAt), [300, 200, 100]);
   assert.deepEqual(sortEntries(entries, "enabled").map((entry) => entry.enabled), [true, true, false]);
   assert.deepEqual(entries.map((entry) => entry.id), ["entry_1", "entry_2", "entry_3"]);
+});
+
+test("sets and shifts insertion order for selected entries", () => {
+  initStore(createTestProject());
+
+  assert.equal(setEntriesOrder(["entry_1", "entry_2"], 500), 2);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_1").order, 500);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_2").order, 500);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_3").order, 30);
+
+  assert.equal(setEntriesOrder(["entry_1"], 500), 0);
+
+  assert.equal(adjustEntriesOrder(["entry_1", "entry_3"], -20), 2);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_1").order, 480);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_3").order, 10);
+
+  assert.equal(undo(), true);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_1").order, 500);
+  assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_3").order, 30);
 });
 
 test("toggles entry filters with mutually exclusive status", () => {

@@ -4,6 +4,14 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-10-22
+
+### Added
+
+- Editable key chips for trigger and secondary keys, with paste support, Backspace removal, and double-click editing.
+- Regex-key support with editor highlighting, validation, and a plain-text fallback for invalid patterns.
+- Bulk insertion-order controls for selected entries.
+
 ## [0.5.5] - 2026-10-22
 
 ### Changed
