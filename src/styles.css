@@ -2102,6 +2102,135 @@ body.is-resizing-sidebar {
   padding: 22px;
 }
 
+.command-dialog {
+  width: min(560px, calc(100vw - 32px));
+  margin: 12vh auto auto;
+}
+
+.command-dialog .dialog-inner {
+  padding: 0;
+}
+
+.command-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  color: var(--text);
+  font-size: 15px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  outline: none;
+}
+
+.command-input::placeholder {
+  color: var(--faint);
+}
+
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: min(360px, 50vh);
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.command-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 12px;
+  color: var(--text-soft);
+  font-size: 13px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.command-option.is-active {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.command-option-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-option-hint {
+  flex-shrink: 0;
+  color: var(--faint);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+}
+
+.command-empty {
+  padding: 18px;
+  color: var(--faint) !important;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.about-dialog,
+.guide-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+
+.about-privacy {
+  margin: 12px 0 0 !important;
+  color: var(--text-soft) !important;
+  font-size: 12.5px !important;
+  line-height: 1.55;
+}
+
+.about-details {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 16px 0 0;
+  font-size: 12px;
+}
+
+.about-details dt {
+  color: var(--faint);
+}
+
+.about-details dd {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.guide-steps strong {
+  color: var(--text);
+}
+
+.guide-steps code {
+  padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
 .dialog h2 {
   margin: 0 0 8px;
   font-size: 16px;
@@ -3297,7 +3426,9 @@ body.is-resizing-sidebar {
     font-size: 14px;
   }
 
-  .file-name {
+  .file-name,
+  .about-btn,
+  .command-btn {
     display: none;
   }
 

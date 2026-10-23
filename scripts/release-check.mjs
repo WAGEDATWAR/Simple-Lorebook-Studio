@@ -25,6 +25,22 @@ if (changelog && !changelog.includes(`## [${version}]`)) {
   problems.push(`CHANGELOG.md has no "## [${version}]" entry.`);
 }
 
+let indexHtml = "";
+
+try {
+  indexHtml = await readFile(resolve(root, "index.html"), "utf8");
+} catch {
+  problems.push("index.html is missing.");
+}
+
+const metaMatch = indexHtml.match(/<meta name="app-version" content="([^"]+)">/);
+
+if (!metaMatch) {
+  problems.push('index.html is missing the app-version meta tag.');
+} else if (metaMatch[1] !== version) {
+  problems.push(`index.html app-version "${metaMatch[1]}" does not match package.json ${version}.`);
+}
+
 const tagResult = spawnSync("git", ["tag", "--points-at", "HEAD"], { cwd: root, encoding: "utf8" });
 
 if (tagResult.status === 0) {

@@ -4,6 +4,15 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-22
+
+### Added
+
+- Command palette (`Ctrl/Cmd+K`) for entry, book, sort, filter, layout, file, and help actions.
+- About panel with the app version, supported formats, local storage usage, and a local-first privacy statement.
+- Getting-started guide dialog and `docs/getting-started.md`.
+- An `app-version` meta tag in `index.html`, verified by `release:check`.
+
 ## [0.5.9] - 2026-10-22
 
 ### Added

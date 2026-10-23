@@ -64,6 +64,7 @@ import { normalizeTagList } from "./schema.js";
 import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
 import { showDiffDialog } from "./ui/diff.js";
+import { openCommandPalette } from "./ui/commandPalette.js";
 import { renderEditor, syncEntryStats } from "./ui/editor.js";
 import { createKeyChips } from "./ui/keyChips.js";
 import { confirmAction, toast } from "./ui/overlays.js";
@@ -116,6 +117,17 @@ const refs = {
   storageUsageBackend: document.querySelector("#storage-usage-backend"),
   storageUsageProject: document.querySelector("#storage-usage-project"),
   storageUsageRevisions: document.querySelector("#storage-usage-revisions"),
+  commandBtn: document.querySelector("#command-btn"),
+  aboutBtn: document.querySelector("#about-btn"),
+  aboutDialog: document.querySelector("#about-dialog"),
+  aboutVersion: document.querySelector("#about-version"),
+  aboutImportFormats: document.querySelector("#about-import-formats"),
+  aboutExportFormats: document.querySelector("#about-export-formats"),
+  aboutStorage: document.querySelector("#about-storage"),
+  aboutGuideBtn: document.querySelector("#about-guide-btn"),
+  aboutCloseBtn: document.querySelector("#about-close"),
+  guideDialog: document.querySelector("#guide-dialog"),
+  guideCloseBtn: document.querySelector("#guide-close"),
   bookSelect: document.querySelector("#book-select"),
   newBookBtn: document.querySelector("#new-book-btn"),
   deleteBookBtn: document.querySelector("#delete-book-btn"),
@@ -615,6 +627,125 @@ async function refreshStorageUsage() {
   } else {
     refs.storageUsageTotal.textContent = "Browser estimate unavailable";
   }
+}
+
+function appVersion() {
+  return document.querySelector('meta[name="app-version"]')?.content ?? "unknown";
+}
+
+async function renderAboutDialog() {
+  refs.aboutVersion.textContent = `Version ${appVersion()}`;
+  refs.aboutImportFormats.textContent = "Lorebook Studio project, SillyTavern World Info v2, Chub lorebook, character book";
+  refs.aboutExportFormats.textContent = [
+    "Project backup",
+    ...EXPORT_FORMATS.map((format) => format.label)
+  ].join(", ");
+
+  const usage = await getStorageUsage();
+  const backend = usage.backend === "indexeddb" ? "IndexedDB" : "localStorage";
+  const total = Number.isFinite(usage.usage) ? `, ${formatBytes(usage.usage)} used` : "";
+  refs.aboutStorage.textContent = `${backend}${total}`;
+}
+
+async function openAboutDialog() {
+  if (!refs.aboutDialog.open) {
+    refs.aboutDialog.showModal();
+  }
+
+  await renderAboutDialog();
+}
+
+function openGuideDialog() {
+  if (!refs.guideDialog.open) {
+    refs.guideDialog.showModal();
+  }
+}
+
+function commandRunSort(mode) {
+  return () => {
+    setSortMode(mode);
+    persistSortMode(getState().ui.sortMode);
+    renderSidebar(refs);
+  };
+}
+
+function commandToggleFilter(name) {
+  return () => {
+    toggleEntryFilter(name);
+    persistEntryFilters(getEntryFilters());
+    renderSidebar(refs);
+  };
+}
+
+function buildCommands() {
+  const entry = getActiveEntry();
+  const commands = [
+    { title: "New entry", hint: "Alt+N", keywords: ["add", "create"], run: handleAddEntry },
+    { title: "New entry from template", keywords: ["add", "create", "starter"], run: openTemplateDialog },
+    { title: "New lorebook", keywords: ["add", "create", "book"], run: () => {
+      addBook();
+      clearSearch();
+      renderAll();
+      refs.bookName.focus();
+      refs.bookName.select();
+      scheduleSave();
+    } },
+    { title: "Save project", hint: "Ctrl+S", keywords: ["persist"], run: async () => {
+      if (await flushSave()) {
+        toast("Project saved", "success");
+      }
+    } },
+    { title: "Import lorebook", keywords: ["file", "open"], run: () => refs.importInput.click() },
+    { title: "Export…", keywords: ["download", "save", "file"], run: openExportDialog },
+    { title: "Export project backup", keywords: ["download", "backup"], run: exportProjectBackup },
+    { title: "Overview", keywords: ["stats", "metrics", "tokens"], run: openOverviewDialog },
+    { title: "Issues", keywords: ["validation", "problems", "errors"], run: openValidationDialog },
+    { title: "Revision history", keywords: ["snapshots", "restore"], run: () => openHistoryDialog() },
+    { title: "Toggle library sidebar", keywords: ["collapse", "layout"], run: () => setSidebarCollapsed(!refs.sidebar.classList.contains("is-collapsed")) },
+    { title: "Toggle entry details", keywords: ["collapse", "layout", "panel"], run: () => setDetailsCollapsed(!refs.detailsPanel.classList.contains("is-collapsed")) },
+    { title: "Sort: manual order", keywords: ["sort"], run: commandRunSort("manual") },
+    { title: "Sort: title", keywords: ["sort", "alphabetical"], run: commandRunSort("title") },
+    { title: "Sort: insertion order", keywords: ["sort"], run: commandRunSort("order") },
+    { title: "Sort: last edited", keywords: ["sort", "recent"], run: commandRunSort("updated") },
+    { title: "Sort: enabled first", keywords: ["sort"], run: commandRunSort("enabled") },
+    { title: "Filter: enabled entries", keywords: ["filter"], run: commandToggleFilter("enabled") },
+    { title: "Filter: disabled entries", keywords: ["filter"], run: commandToggleFilter("disabled") },
+    { title: "Filter: always-on entries", keywords: ["filter"], run: commandToggleFilter("alwaysOn") },
+    { title: "Filter: entries missing keys", keywords: ["filter"], run: commandToggleFilter("missingKeys") },
+    { title: "Getting started", keywords: ["guide", "help", "docs"], run: openGuideDialog },
+    { title: "About Lorebook Studio", keywords: ["version", "privacy", "info"], run: () => openAboutDialog() }
+  ];
+
+  if (entry) {
+    commands.splice(2, 0,
+      { title: "Duplicate entry", keywords: ["copy"], run: handleDuplicateEntry },
+      { title: "Delete entry", keywords: ["remove"], run: handleDeleteEntry }
+    );
+  }
+
+  if (canUndo()) {
+    commands.push({ title: "Undo", hint: "Ctrl+Z", keywords: ["history"], run: handleUndo });
+  }
+
+  if (canRedo()) {
+    commands.push({ title: "Redo", hint: "Ctrl+Shift+Z", keywords: ["history"], run: handleRedo });
+  }
+
+  if (getState().ui.searchQuery.trim()) {
+    commands.push({ title: "Clear search", keywords: ["reset"], run: () => {
+      clearSearch();
+      renderSidebar(refs);
+    } });
+  }
+
+  if (supportsFileSystemAccess()) {
+    commands.push(
+      { title: "Open project file…", hint: "Ctrl+O", keywords: ["file"], run: openProjectFile },
+      { title: "Save project file…", hint: "Ctrl+Shift+S", keywords: ["file"], run: () => saveProjectFile({ saveAs: true }) }
+    );
+  }
+
+  return commands;
 }
 
 function supportsFileSystemAccess() {
@@ -2389,6 +2520,39 @@ refs.importInput.addEventListener("change", async () => {
   }
 });
 
+refs.commandBtn.addEventListener("click", () => {
+  openCommandPalette(buildCommands());
+});
+
+refs.aboutBtn.addEventListener("click", () => {
+  openAboutDialog();
+});
+
+refs.aboutGuideBtn.addEventListener("click", () => {
+  refs.aboutDialog.close();
+  openGuideDialog();
+});
+
+refs.aboutCloseBtn.addEventListener("click", () => {
+  refs.aboutDialog.close();
+});
+
+refs.guideCloseBtn.addEventListener("click", () => {
+  refs.guideDialog.close();
+});
+
+refs.aboutDialog.addEventListener("click", (event) => {
+  if (event.target === refs.aboutDialog) {
+    refs.aboutDialog.close();
+  }
+});
+
+refs.guideDialog.addEventListener("click", (event) => {
+  if (event.target === refs.guideDialog) {
+    refs.guideDialog.close();
+  }
+});
+
 refs.exportBtn.addEventListener("click", () => {
   openExportDialog();
 });
@@ -2491,6 +2655,12 @@ document.addEventListener("keydown", async (event) => {
 
   const modifier = event.ctrlKey || event.metaKey;
   const key = event.key.toLowerCase();
+
+  if (modifier && !event.altKey && key === "k") {
+    event.preventDefault();
+    openCommandPalette(buildCommands());
+    return;
+  }
 
   if (modifier && !event.altKey && key === "z") {
     event.preventDefault();

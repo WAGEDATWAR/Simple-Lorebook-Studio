@@ -14,22 +14,23 @@ Lorebook Studio uses a simple pre-1.0 semantic versioning convention.
 ## Checklist
 
 1. Update `version` in `package.json`.
-2. Add a `## [<version>]` section to `CHANGELOG.md` and move finished entries out of `Unreleased`.
-3. Run the full verification suite:
+2. Update the `app-version` meta tag in `index.html` to match.
+3. Add a `## [<version>]` section to `CHANGELOG.md` and move finished entries out of `Unreleased`.
+4. Run the full verification suite:
    - `npm run check`
    - `npm run lint`
    - `npm run format` (should report clean)
    - `npm test`
    - `npm run test:e2e`
    - `npm run release:check`
-4. Commit the release changes.
-5. Push `main`.
-6. Create an annotated tag: `git tag -a v<version> -m "v<version> - <summary>"`.
-7. Push the tag: `git push origin v<version>`.
+5. Commit the release changes.
+6. Push `main`.
+7. Create an annotated tag: `git tag -a v<version> -m "v<version> - <summary>"`.
+8. Push the tag: `git push origin v<version>`.
 
 ## Verification scripts
 
 - `npm run check` syntax-checks every JavaScript module.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules.
 - `npm run format` reports files that need whitespace normalization; `npm run format:write` applies fixes.
-- `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
+- `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.

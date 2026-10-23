@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
+  <meta name="app-version" content="0.6.0">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -36,6 +37,13 @@
       </div>
 
       <div class="topbar-actions">
+        <button id="command-btn" class="icon-btn command-btn" type="button" aria-label="Command palette" title="Command palette (Ctrl+K)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 6.5 7.5 6.5A2.5 2.5 0 1 0 10 9V7.5"/><path d="M9 17.5 7.5 17.5A2.5 2.5 0 1 1 10 15v1.5"/>
+            <path d="M15 6.5 16.5 6.5A2.5 2.5 0 1 1 14 9V7.5"/><path d="M15 17.5 16.5 17.5A2.5 2.5 0 1 0 14 15v1.5"/>
+            <path d="M9 9h6v6H9z"/>
+          </svg>
+        </button>
         <div class="history-controls" role="group" aria-label="History">
           <button id="undo-btn" class="icon-btn" type="button" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -77,6 +85,11 @@
             <path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>
           </svg>
           <span class="btn-label">Export</span>
+        </button>
+        <button id="about-btn" class="icon-btn about-btn" type="button" aria-label="About Lorebook Studio" title="About and getting started">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/>
+          </svg>
         </button>
       </div>
     </header>
@@ -608,6 +621,60 @@
       <div class="dialog-actions">
         <button id="confirm-cancel" class="btn" type="button">Cancel</button>
         <button id="confirm-accept" class="btn btn-danger" type="button">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="command-dialog" class="dialog command-dialog" aria-labelledby="command-title">
+    <div class="dialog-inner">
+      <h2 id="command-title" class="sr-only">Command palette</h2>
+      <label class="sr-only" for="command-input">Search commands</label>
+      <input id="command-input" class="command-input" type="text" placeholder="Type a command…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="command-list" aria-autocomplete="list">
+      <div id="command-list" class="command-list" role="listbox" aria-label="Commands"></div>
+      <p id="command-empty" class="command-empty" hidden>No matching commands.</p>
+    </div>
+  </dialog>
+
+  <dialog id="about-dialog" class="dialog about-dialog" aria-labelledby="about-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">About</p>
+        <h2 id="about-title">Lorebook Studio</h2>
+        <p id="about-version" class="dialog-copy">Version 0.0.0</p>
+      </div>
+      <p class="about-privacy">Lorebook Studio is local-first. Your projects never leave this device: there are no accounts, no analytics, and no uploads. Everything is stored in your browser and is only shared when you export or import a file yourself.</p>
+      <dl class="about-details">
+        <dt>Import formats</dt>
+        <dd id="about-import-formats">&mdash;</dd>
+        <dt>Export formats</dt>
+        <dd id="about-export-formats">&mdash;</dd>
+        <dt>Local storage</dt>
+        <dd id="about-storage">&mdash;</dd>
+      </dl>
+      <div class="dialog-actions">
+        <button id="about-guide-btn" class="btn btn-primary" type="button">Getting started</button>
+        <button id="about-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="guide-dialog" class="dialog guide-dialog" aria-labelledby="guide-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Getting started</p>
+        <h2 id="guide-title">Create and export your first lorebook</h2>
+      </div>
+      <ol class="guide-steps">
+        <li><strong>Name your lorebook.</strong> The title field at the top names the active lorebook. Use the sidebar dropdown to switch between lorebooks or add a new one.</li>
+        <li><strong>Add entries.</strong> Choose <em>New entry</em> or <em>From template</em>, then fill in the title and content. Content is the text injected when the entry activates.</li>
+        <li><strong>Add trigger keys.</strong> Type keys as chips: press Enter or comma to add, paste a comma-separated list, or write <code>/pattern/i</code> for a regex key. Always-on entries skip key matching.</li>
+        <li><strong>Organize and search.</strong> Add tags to entries and lorebooks, filter the list by tag or status, and use search to highlight matches and see why an entry matched.</li>
+        <li><strong>Check for problems.</strong> Open <em>Issues</em> to find empty content, duplicate or colliding keys, invalid regex, missing keys, unreachable entries, and insertion-order collisions.</li>
+        <li><strong>Save and back up.</strong> Changes save to your browser automatically. Export a project backup regularly, or use <em>Save</em> to write a project file when your browser supports it.</li>
+        <li><strong>Export for your frontend.</strong> Open <em>Export</em> for SillyTavern World Info, Chub, character book, or native output. Unknown imported fields are preserved for round-trips.</li>
+      </ol>
+      <div class="dialog-actions">
+        <button id="guide-close" class="btn" type="button">Close</button>
       </div>
     </div>
   </dialog>

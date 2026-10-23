@@ -26,8 +26,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 
 ## Next Up
 
-- [ ] [P1] [Medium] Release readiness: add an About panel with version and supported formats, a local-first/no-upload privacy statement, and a first-lorebook user guide.
-- [ ] [P1] [Medium] Add a command palette for quick actions.
 - [ ] [P1] [High] Run an automated accessibility audit and fix all critical issues.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
 - [ ] [P1] [Very High] Replace the character/4 estimate with a real tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
@@ -131,6 +129,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Low] Verify focus restoration after delete, book switch, and dialog dismissal.
 - [x] [P1] [Medium] Add a proper unsaved-changes strategy for failed localStorage writes.
 - [ ] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
+- [x] [P1] [Medium] Add a command palette for quick actions.
 - [ ] [P2] [Low] Hide field hint text while a field has content, showing it again only when the field is empty or focused.
 - [ ] [P2] [Low] Add hover-based hint popup dialogs on desktop for fields and controls with longer explanations.
 - [ ] [P2] [High] Add a light theme or theme tokens once the component set stabilizes.
@@ -159,6 +158,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 
 ## Product and Release
 
+- [x] [P1] [Medium] Release readiness: add an About panel with version, supported formats, and storage usage, a local-first privacy statement, and a first-lorebook getting-started guide.
 - [ ] [P1] [Low] Decide the primary v1 export target: standalone ST World Info, character book, or Chub.
 - [x] [P2] [Low] Decide the product name and visual identity: "Loreweaver".
 - [ ] [P1] [High] Rename the product to Loreweaver across the UI, docs, package metadata, and export filenames, keeping stored data compatible.

@@ -593,6 +593,55 @@ export const scenarios = [
     }
   },
   {
+    name: "opens and runs commands from the command palette",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true, cancelable: true }))');
+      await page.waitFor('document.querySelector("#command-dialog")?.open');
+
+      await setValue(page, "#command-input", "overview");
+      await page.waitFor('document.querySelectorAll(".command-option").length === 1');
+      const title = await page.evaluate('document.querySelector(".command-option-title").textContent');
+      assert.equal(title, "Overview");
+
+      await page.evaluate(`(() => {
+        const input = document.querySelector("#command-input");
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+        return true;
+      })()`);
+      await page.waitFor('document.querySelector("#overview-dialog")?.open');
+      await page.waitFor('!document.querySelector("#command-dialog")?.open');
+      await page.click("#overview-close");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "opens the About panel and getting-started guide",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#about-btn");
+      await page.waitFor('document.querySelector("#about-dialog")?.open');
+      await page.waitFor('document.querySelector("#about-version").textContent.startsWith("Version ")');
+
+      const version = await page.evaluate('document.querySelector("#about-version").textContent');
+      const meta = await page.evaluate('document.querySelector("meta[name=\\"app-version\\"]").content');
+      assert.ok(version.includes(meta));
+
+      const privacy = await page.evaluate('document.querySelector(".about-privacy").textContent');
+      assert.match(privacy, /local-first/);
+      const formats = await page.evaluate('document.querySelector("#about-export-formats").textContent');
+      assert.match(formats, /Character book/);
+
+      await page.click("#about-guide-btn");
+      await page.waitFor('document.querySelector("#guide-dialog")?.open');
+      const steps = await page.evaluate('document.querySelectorAll(".guide-steps li").length');
+      assert.ok(steps >= 5);
+      await page.click("#guide-close");
+      await page.waitFor('!document.querySelector("#guide-dialog")?.open');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "keeps the layout inside the viewport",
     async run(page, context) {
       await resetApp(page);

@@ -68,12 +68,14 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Sort modes: manual order, title, insertion order, last edited, and enabled first. The preference persists locally.
 - Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally. Entry tags add a dynamic tag-filter row.
 - When a search or filter hides the active entry, it stays visible as a pinned "Current" card so results remain stable.
+- A command palette (`Ctrl/Cmd+K`) with fuzzy-free text filtering over entry, book, sort, filter, layout, file, and help actions.
+- An About panel with the app version, supported import/export formats, local storage usage, and a local-first privacy statement, plus a getting-started guide dialog.
 - Entry-list keyboard navigation with `ArrowUp`/`ArrowDown`/`Home`/`End`, `Enter`/`Space` activation, and `Ctrl`/`Shift` selection modifiers.
 - Focus and scroll preservation across sidebar re-renders, plus focus restoration after entry/book deletion and dialog dismissal.
 - A storage-failure banner with export and retry actions, and a beforeunload warning when a local save fails.
 - Compact entry ID badges use source IDs when available and a stable compact fallback for native entries.
 - Destructive actions behind a styled confirmation dialog.
-- Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
+- Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+K` command palette, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
 - Responsive layout with a stacked sidebar/editor arrangement on narrow screens.
 - Auto-sized library sidebar with a 200-460 px drag/keyboard resize range, wrapped controls, and a collapsible 50 px rail. Width and collapse state persist locally.
 - Sample "Aurora Vale" project so the interface is meaningful on first run.
@@ -108,6 +110,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/overview.js` | Book metrics, token summaries, and key coverage |
 | `src/templates.js` | Built-in entry templates and patch builders |
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
+| `src/commands.js` | Pure command-palette filtering |
+| `src/ui/commandPalette.js` | Command palette dialog controller |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, native, and character-book adapters |
 | `src/limits.js` | Import size and schema limits |
@@ -122,6 +126,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/templates.test.js` | Built-in template integrity and independent patch tests |
 | `test/keys.test.js` | Regex-key detection, parsing, and invalid-pattern fallback tests |
 | `test/limits.test.js` | Import size and project schema limit tests |
+| `test/commands.test.js` | Command-palette filtering tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
@@ -388,6 +393,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Inline options are chips; grouped numeric/enumerated settings live in one injection row.
 - Trigger and secondary keys use chip editors with paste support, and regex keys are visually distinguished from plain keys.
 - The bulk bar sets or shifts insertion order for the selected entries alongside enable, disable, delete, and clear.
+- The command palette opens from the topbar or `Ctrl/Cmd+K`, filters as you type, and runs the highlighted command on `Enter`.
+- The About panel reports the version, formats, and storage usage with a local-first privacy statement, and links to the getting-started guide.
 - Toasts confirm imports, exports, save failures, duplication, bulk changes, and deletions. A persistent banner with export and retry actions appears while local saves are failing.
 - Empty states explain the next action and expose the primary CTA.
 
@@ -461,9 +468,9 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 79 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
-- `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 83 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
 - Headless Chrome verified the export, validation, history, overview, and template dialogs at 1440, 390, and 320 px with no horizontal document or dialog overflow.
