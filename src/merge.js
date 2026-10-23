@@ -96,6 +96,7 @@ function updateEntry(existing, incoming) {
   existing.title = incoming.title;
   existing.keys = [...incoming.keys];
   existing.secondaryKeys = [...incoming.secondaryKeys];
+  existing.tags = [...(incoming.tags ?? [])];
   existing.content = incoming.content;
   existing.notes = incoming.notes;
   existing.enabled = incoming.enabled;

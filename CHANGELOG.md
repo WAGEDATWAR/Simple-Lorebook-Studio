@@ -4,6 +4,14 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-10-22
+
+### Added
+
+- Tags for entries and lorebooks, edited as chips, shown as card badges, and filterable from the sidebar.
+- Search match highlighting plus a per-card note explaining which fields matched.
+- A pinned "Current" card that keeps the active entry visible when search or filters hide it.
+
 ## [0.5.6] - 2026-10-22
 
 ### Added

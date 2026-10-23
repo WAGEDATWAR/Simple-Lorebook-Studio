@@ -136,8 +136,8 @@ export const scenarios = [
     async run(page) {
       await resetApp(page);
       await setValue(page, "#entry-search", "Mara");
-      await page.waitFor('document.querySelectorAll(".entry-card").length === 1');
-      const title = await page.evaluate('document.querySelector(".entry-card-title").textContent');
+      await page.waitFor('document.querySelectorAll(".entry-card:not(.is-pinned)").length === 1');
+      const title = await page.evaluate('document.querySelector(".entry-card:not(.is-pinned) .entry-card-title").textContent');
       assert.equal(title, "Mara Voss");
 
       await setValue(page, "#entry-search", "");
@@ -164,7 +164,7 @@ export const scenarios = [
       await page.click("#add-entry-btn");
       await page.waitFor('document.querySelectorAll(".entry-card").length === 4');
       await setChecked(page, "#entry-enabled", false);
-      await page.waitFor('document.querySelectorAll(".entry-card").length === 3');
+      await page.waitFor('document.querySelectorAll(".entry-card:not(.is-pinned)").length === 3');
 
       await page.click('[data-filter="disabled"]');
       await page.waitFor('document.querySelectorAll(".entry-card").length === 1');
@@ -180,6 +180,80 @@ export const scenarios = [
 
       const pressed = await page.evaluate('[...document.querySelectorAll("#entry-filters [data-filter]")].map((button) => button.getAttribute("aria-pressed"))');
       assert.deepEqual(pressed, ["false", "false", "false", "false"]);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "tags entries and filters by tag",
+    async run(page) {
+      await resetApp(page);
+
+      await addChipKey(page, "#entry-tags-input", "location");
+      await addChipKey(page, "#entry-tags-input", "city");
+      await page.waitFor('document.querySelectorAll("#entry-tags .key-chip").length === 2');
+
+      await page.evaluate(`(() => {
+        const cards = [...document.querySelectorAll(".entry-card")];
+        cards[1].click();
+        return true;
+      })()`);
+      await page.waitFor('document.querySelector("#entry-title").value === "Mara Voss"');
+      await addChipKey(page, "#entry-tags-input", "npc");
+      await page.waitFor('document.querySelectorAll("#tag-filters [data-tag]").length === 3');
+
+      await page.click('#tag-filters [data-tag="npc"]');
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 1');
+      const title = await page.evaluate('document.querySelector(".entry-card-title").textContent');
+      assert.equal(title, "Mara Voss");
+
+      await page.click('#tag-filters [data-tag="npc"]');
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 3');
+
+      await page.waitFor('document.querySelector("#save-state")?.dataset.state === "saved"');
+      await page.reload();
+      await page.waitFor('document.querySelector("#entry-title")?.value === "Mara Voss"');
+      await page.waitFor('document.querySelectorAll("#entry-tags .key-chip").length === 1');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "highlights search matches and explains them",
+    async run(page) {
+      await resetApp(page);
+
+      await setValue(page, "#entry-search", "mara");
+      await page.waitFor('document.querySelectorAll(".entry-card:not(.is-pinned)").length === 1');
+      const highlight = await page.evaluate('document.querySelector(".entry-card:not(.is-pinned) .entry-card-title mark")?.textContent ?? ""');
+      assert.equal(highlight.toLowerCase(), "mara");
+      const why = await page.evaluate('document.querySelector(".entry-card:not(.is-pinned) .entry-card-match")?.textContent ?? ""');
+      assert.match(why, /title/);
+
+      await setValue(page, "#entry-search", "lanterns");
+      await page.waitFor('document.querySelectorAll(".entry-card:not(.is-pinned)").length === 1');
+      const contentWhy = await page.evaluate('document.querySelector(".entry-card:not(.is-pinned) .entry-card-match")?.textContent ?? ""');
+      assert.match(contentWhy, /content/);
+      const titleMark = await page.evaluate('Boolean(document.querySelector(".entry-card:not(.is-pinned) .entry-card-title mark"))');
+      assert.equal(titleMark, false);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "keeps the active entry visible when filtered out",
+    async run(page) {
+      await resetApp(page);
+      const activeId = await page.evaluate('document.querySelector(".entry-card.is-active").dataset.entryId');
+
+      await setValue(page, "#entry-search", "mara");
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 2');
+      const pinned = await page.evaluate('document.querySelector(".entry-card.is-pinned")?.dataset.entryId ?? ""');
+      assert.equal(pinned, activeId);
+      const count = await page.evaluate('document.querySelector("#entry-count").textContent');
+      assert.equal(count, "1/3");
+
+      await setValue(page, "#entry-search", "");
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 3');
+      const stillPinned = await page.evaluate('Boolean(document.querySelector(".entry-card.is-pinned"))');
+      assert.equal(stillPinned, false);
       assert.deepEqual(page.errors, []);
     }
   },

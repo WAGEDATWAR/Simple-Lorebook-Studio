@@ -21,6 +21,7 @@ test("creates entries with defaults and clamps input", () => {
     title: 42,
     keys: [" alpha ", "alpha", ""],
     secondaryKeys: [" beta "],
+    tags: [" npc ", "NPC", "location", ""],
     content: "Content",
     notes: "Author-only notes",
     enabled: false,
@@ -40,6 +41,7 @@ test("creates entries with defaults and clamps input", () => {
   assert.equal(entry.title, "");
   assert.deepEqual(entry.keys, ["alpha", "alpha"]);
   assert.deepEqual(entry.secondaryKeys, ["beta"]);
+  assert.deepEqual(entry.tags, ["npc", "location"]);
   assert.equal(entry.notes, "Author-only notes");
   assert.equal(entry.enabled, false);
   assert.equal(entry.constant, true);
@@ -71,6 +73,7 @@ test("creates books with normalized entries and defaults", () => {
   const book = createBook({
     name: "Book",
     description: "Description",
+    tags: [" campaign ", "Campaign", "v2"],
     entries: [{ id: "entry_one", title: "Entry" }],
     extensions: null
   });
@@ -78,9 +81,11 @@ test("creates books with normalized entries and defaults", () => {
 
   assert.equal(book.name, "Book");
   assert.equal(book.description, "Description");
+  assert.deepEqual(book.tags, ["campaign", "v2"]);
   assert.equal(book.entries[0].id, "entry_one");
   assert.equal(fallback.name, "Untitled Lorebook");
   assert.equal(fallback.description, "");
+  assert.deepEqual(fallback.tags, []);
   assert.deepEqual(fallback.entries, []);
   assert.deepEqual(book.extensions, {});
 });

@@ -4,13 +4,15 @@ const POSITION_LABELS = new Map(POSITIONS.map((position) => [position.value, pos
 
 const BOOK_FIELDS = [
   { key: "name", label: "Name", kind: "text" },
-  { key: "description", label: "Description", kind: "long" }
+  { key: "description", label: "Description", kind: "long" },
+  { key: "tags", label: "Tags", kind: "list" }
 ];
 
 const ENTRY_FIELDS = [
   { key: "title", label: "Title", kind: "text" },
   { key: "keys", label: "Trigger keys", kind: "list" },
   { key: "secondaryKeys", label: "Secondary keys", kind: "list" },
+  { key: "tags", label: "Tags", kind: "list" },
   { key: "content", label: "Content", kind: "long" },
   { key: "notes", label: "Author notes", kind: "long" },
   { key: "enabled", label: "Enabled", kind: "boolean" },

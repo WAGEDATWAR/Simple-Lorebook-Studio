@@ -127,6 +127,12 @@
                 <label class="sr-only" for="book-description">Lorebook description</label>
                 <textarea id="book-description" class="book-description-input" rows="3" placeholder="Optional notes about this lorebook."></textarea>
               </details>
+              <div class="field">
+                <label for="book-tags-input">Tags <span class="hint">optional</span></label>
+                <div id="book-tags" class="key-chips tag-chips" role="list">
+                  <input id="book-tags-input" class="key-chips-input" type="text" placeholder="campaign, v2" autocomplete="off" spellcheck="false">
+                </div>
+              </div>
               <div class="book-meta-actions">
                 <button id="overview-btn" class="meta-btn overview-btn" type="button" aria-label="Lorebook overview" title="Lorebook overview">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -159,6 +165,8 @@
               <button class="filter-chip" type="button" data-filter="alwaysOn" aria-pressed="false">Always on</button>
               <button class="filter-chip" type="button" data-filter="missingKeys" aria-pressed="false">Missing keys</button>
             </div>
+
+            <div id="tag-filters" class="entry-filters tag-filters" role="group" aria-label="Filter entries by tag" hidden></div>
           </div>
 
           <div class="entry-list-head">
@@ -290,6 +298,12 @@
                     <label for="entry-secondary-keys-input">Secondary keys <span class="hint">optional</span></label>
                     <div id="entry-secondary-keys" class="key-chips" role="list">
                       <input id="entry-secondary-keys-input" class="key-chips-input" type="text" placeholder="inner voice, thought" autocomplete="off" spellcheck="false">
+                    </div>
+                  </div>
+                  <div class="field field-wide">
+                    <label for="entry-tags-input">Tags <span class="hint">optional</span></label>
+                    <div id="entry-tags" class="key-chips tag-chips" role="list">
+                      <input id="entry-tags-input" class="key-chips-input" type="text" placeholder="npc, location, faction" autocomplete="off" spellcheck="false">
                     </div>
                   </div>
                 </div>

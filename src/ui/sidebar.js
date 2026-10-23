@@ -2,6 +2,15 @@ import { getActiveBook, getSelectedEntryIds, getState } from "../store.js";
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
+const QUERY_FIELDS = [
+  { key: "title", label: "title", read: (entry) => entry.title },
+  { key: "content", label: "content", read: (entry) => entry.content },
+  { key: "notes", label: "notes", read: (entry) => entry.notes ?? "" },
+  { key: "keys", label: "keys", read: (entry) => entry.keys.join(", ") },
+  { key: "secondaryKeys", label: "secondary keys", read: (entry) => entry.secondaryKeys.join(", ") },
+  { key: "tags", label: "tags", read: (entry) => (entry.tags ?? []).join(", ") }
+];
+
 function entryLabel(entry) {
   return entry.title.trim() || "Untitled entry";
 }
@@ -16,22 +25,16 @@ function keySummary(entry) {
   return remaining > 0 ? `${visible} +${remaining}` : visible;
 }
 
-function matchesQuery(entry, query) {
+function analyzeQuery(entry, query) {
   if (!query) {
-    return true;
+    return { matched: true, fields: [] };
   }
 
-  const haystack = [
-    entry.title,
-    entry.content,
-    entry.notes ?? "",
-    entry.keys.join(" "),
-    entry.secondaryKeys.join(" ")
-  ]
-    .join("\n")
-    .toLowerCase();
+  const fields = QUERY_FIELDS
+    .filter((field) => String(field.read(entry)).toLowerCase().includes(query))
+    .map((field) => field.label);
 
-  return haystack.includes(query);
+  return { matched: fields.length > 0, fields };
 }
 
 function matchesFilters(entry, filters) {
@@ -54,6 +57,47 @@ function matchesFilters(entry, filters) {
   return true;
 }
 
+function matchesTagFilters(entry, tagFilters) {
+  if (!tagFilters.length) {
+    return true;
+  }
+
+  const tags = new Set(entry.tags ?? []);
+  return tagFilters.every((tag) => tags.has(tag));
+}
+
+function highlightMatches(text, query) {
+  const value = String(text);
+
+  if (!query) {
+    return document.createTextNode(value);
+  }
+
+  const lower = value.toLowerCase();
+  const fragment = document.createDocumentFragment();
+  let index = 0;
+
+  while (index < value.length) {
+    const found = lower.indexOf(query, index);
+
+    if (found === -1) {
+      fragment.append(document.createTextNode(value.slice(index)));
+      break;
+    }
+
+    if (found > index) {
+      fragment.append(document.createTextNode(value.slice(index, found)));
+    }
+
+    const mark = document.createElement("mark");
+    mark.textContent = value.slice(found, found + query.length);
+    fragment.append(mark);
+    index = found + query.length;
+  }
+
+  return fragment;
+}
+
 function renderFilterChips(container, filters) {
   if (!container) {
     return;
@@ -63,6 +107,28 @@ function renderFilterChips(container, filters) {
     const active = filters[button.dataset.filter] === true;
     button.setAttribute("aria-pressed", String(active));
     button.classList.toggle("is-active", active);
+  }
+}
+
+function renderTagFilters(container, tags, activeTags) {
+  if (!container) {
+    return;
+  }
+
+  container.replaceChildren();
+  container.hidden = !tags.length;
+
+  for (const tag of tags) {
+    const button = document.createElement("button");
+    const active = activeTags.includes(tag);
+
+    button.type = "button";
+    button.className = "filter-chip tag-filter-chip";
+    button.dataset.tag = tag;
+    button.setAttribute("aria-pressed", String(active));
+    button.classList.toggle("is-active", active);
+    button.textContent = tag;
+    container.append(button);
   }
 }
 
@@ -109,7 +175,7 @@ export function sortEntries(entries, mode) {
 }
 
 function createEntryCard(entry, options) {
-  const { isActive, isSelected, canDrag } = options;
+  const { isActive, isSelected, canDrag, query = "", match = null, pinned = false } = options;
   const card = document.createElement("div");
   card.dataset.entryId = entry.id;
   card.className = "entry-card";
@@ -130,6 +196,10 @@ function createEntryCard(entry, options) {
     card.classList.add("is-disabled");
   }
 
+  if (pinned) {
+    card.classList.add("is-pinned");
+  }
+
   if (canDrag) {
     card.draggable = true;
   }
@@ -148,7 +218,7 @@ function createEntryCard(entry, options) {
 
   const title = document.createElement("span");
   title.className = "entry-card-title";
-  title.textContent = entryLabel(entry);
+  title.append(highlightMatches(entryLabel(entry), query));
 
   top.append(id, dot, title);
 
@@ -159,11 +229,47 @@ function createEntryCard(entry, options) {
     top.append(badge);
   }
 
+  if (pinned) {
+    const pin = document.createElement("span");
+    pin.className = "entry-pin";
+    pin.textContent = "Current";
+    top.append(pin);
+  }
+
   const meta = document.createElement("span");
   meta.className = "entry-card-meta";
-  meta.textContent = keySummary(entry);
+  meta.append(highlightMatches(keySummary(entry), query));
 
   card.append(top, meta);
+
+  if (entry.tags?.length) {
+    const tags = document.createElement("span");
+    tags.className = "entry-card-tags";
+
+    for (const tag of entry.tags.slice(0, 3)) {
+      const chip = document.createElement("span");
+      chip.className = "entry-tag";
+      chip.textContent = tag;
+      tags.append(chip);
+    }
+
+    if (entry.tags.length > 3) {
+      const more = document.createElement("span");
+      more.className = "entry-tag";
+      more.textContent = `+${entry.tags.length - 3}`;
+      tags.append(more);
+    }
+
+    card.append(tags);
+  }
+
+  if (query && match?.fields.length) {
+    const why = document.createElement("span");
+    why.className = "entry-card-match";
+    why.textContent = `Matched: ${match.fields.join(", ")}`;
+    card.append(why);
+  }
+
   card.title = `${entry.keys.length ? entry.keys.join(", ") : "No trigger keys"}\nID: ${entry.id}`;
 
   return card;
@@ -181,18 +287,30 @@ export function renderSidebar(refs) {
   const query = state.ui.searchQuery.trim().toLowerCase();
   const entries = book?.entries ?? [];
   const filters = state.ui.filters ?? {};
+  const tagFilters = Array.isArray(state.ui.tagFilters) ? state.ui.tagFilters : [];
   const hasFilters = Object.values(filters).some(Boolean);
+  const hasTagFilters = tagFilters.length > 0;
+  const narrowing = Boolean(query) || hasFilters || hasTagFilters;
+  const matches = new Map();
   const filtered = sortEntries(
-    entries.filter((entry) => matchesQuery(entry, query) && matchesFilters(entry, filters)),
+    entries.filter((entry) => {
+      const match = analyzeQuery(entry, query);
+      matches.set(entry.id, match);
+      return match.matched && matchesFilters(entry, filters) && matchesTagFilters(entry, tagFilters);
+    }),
     state.ui.sortMode
   );
+  const availableTags = [...new Set(entries.flatMap((entry) => entry.tags ?? []))].sort(collator.compare);
+  const activeEntry = entries.find((entry) => entry.id === state.activeEntryId) ?? null;
+  const activeVisible = filtered.some((entry) => entry.id === state.activeEntryId);
+  const pinnedEntry = activeEntry && !activeVisible && narrowing ? activeEntry : null;
   const scrollTop = refs.entryList.scrollTop;
   const activeElement = document.activeElement;
   const focusedEntryId = activeElement instanceof Element
     ? activeElement.closest("[data-entry-id]")?.dataset.entryId ?? null
     : null;
   const selected = new Set(getSelectedEntryIds());
-  const canDrag = state.ui.sortMode === "manual" && !query && !hasFilters;
+  const canDrag = state.ui.sortMode === "manual" && !narrowing;
 
   const options = state.books.map((item) => {
     const option = document.createElement("option");
@@ -205,19 +323,20 @@ export function renderSidebar(refs) {
   refs.bookSelect.value = state.activeBookId ?? "";
   refs.entrySort.value = state.ui.sortMode;
   renderFilterChips(refs.entryFilters, filters);
-  refs.entryCount.textContent = query || hasFilters
+  renderTagFilters(refs.tagFilters, availableTags, tagFilters);
+  refs.entryCount.textContent = narrowing
     ? `${filtered.length}/${entries.length}`
     : String(entries.length);
 
   refs.entryList.replaceChildren();
   renderBulkBar(refs);
 
-  if (!filtered.length) {
+  if (!filtered.length && !pinnedEntry) {
     const empty = document.createElement("div");
     empty.className = "entry-list-empty";
     empty.textContent = query
       ? `No entries match "${state.ui.searchQuery.trim()}".`
-      : hasFilters
+      : narrowing
         ? "No entries match the current filters."
         : "No entries yet. Create one to start writing.";
     refs.entryList.append(empty);
@@ -227,11 +346,24 @@ export function renderSidebar(refs) {
 
   const fragment = document.createDocumentFragment();
 
+  if (pinnedEntry) {
+    fragment.append(createEntryCard(pinnedEntry, {
+      isActive: true,
+      isSelected: selected.has(pinnedEntry.id),
+      canDrag: false,
+      query,
+      match: matches.get(pinnedEntry.id) ?? null,
+      pinned: true
+    }));
+  }
+
   for (const entry of filtered) {
     fragment.append(createEntryCard(entry, {
       isActive: entry.id === state.activeEntryId,
       isSelected: selected.has(entry.id),
-      canDrag
+      canDrag,
+      query,
+      match: matches.get(entry.id) ?? null
     }));
   }
 

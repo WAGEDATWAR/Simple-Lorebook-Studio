@@ -32,6 +32,7 @@ export function renderEditor(refs) {
   refs.entryEnabled.checked = entry.enabled;
   refs.keyChips?.setKeys(entry.keys);
   refs.secondaryKeyChips?.setKeys(entry.secondaryKeys);
+  refs.entryTagChips?.setKeys(entry.tags ?? []);
   refs.entryContent.value = entry.content;
   refs.entryNotes.value = entry.notes;
   refs.entryOrder.value = String(entry.order);

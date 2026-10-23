@@ -1138,6 +1138,55 @@ body.is-resizing-sidebar {
   white-space: nowrap;
 }
 
+.entry-card mark {
+  color: var(--text);
+  background: rgba(143, 168, 255, 0.28);
+  border-radius: 3px;
+}
+
+.entry-pin {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  color: var(--warning);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  border-radius: 5px;
+}
+
+.entry-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 13px;
+}
+
+.entry-tag {
+  padding: 1px 6px;
+  color: var(--faint);
+  font-size: 9.5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.entry-card-match {
+  padding-left: 13px;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-card.is-pinned {
+  border-color: var(--warning-border);
+  box-shadow: inset 0 0 0 1px var(--warning-soft);
+}
+
 .entry-card.is-active .entry-card-meta {
   color: var(--muted);
 }
@@ -1526,6 +1575,10 @@ body.is-resizing-sidebar {
   gap: 14px;
 }
 
+.field-wide {
+  grid-column: 1 / -1;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -1689,6 +1742,29 @@ body.is-resizing-sidebar {
   border: 1px solid var(--accent-border);
   border-radius: 999px;
   outline: none;
+}
+
+.tag-chips .key-chip {
+  color: var(--success);
+  background: rgba(126, 226, 184, 0.08);
+  border-color: rgba(126, 226, 184, 0.28);
+}
+
+.tag-chips .key-chip-remove {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.tag-chips .key-chip-remove:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+  opacity: 1;
+}
+
+.tag-filter-chip.is-active {
+  color: var(--success);
+  background: rgba(126, 226, 184, 0.1);
+  border-color: rgba(126, 226, 184, 0.32);
 }
 
 .section-head {

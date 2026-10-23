@@ -37,8 +37,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Book-level validation for empty content, repeated keys, key collisions across entries, invalid regex keys, missing keys, unreachable enabled entries, and insertion-order collisions, with jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
-- Search across title, content, trigger keys, secondary keys, and author notes.
-- Entry fields: title, trigger keys, secondary keys, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
+- Search across title, content, trigger keys, secondary keys, author notes, and tags, with matched text highlighted and a per-card note explaining which fields matched.
+- Entry fields: title, trigger keys, secondary keys, tags, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
+- Lorebooks and entries carry optional tags, edited as chips. Entry tags drive a tag-filter row in the sidebar and appear as badges on entry cards.
 - Trigger and secondary keys are edited as chips: add with Enter/comma, paste comma- or newline-separated lists, remove with the chip button or Backspace, and double-click a chip to edit it.
 - Slash-delimited keys are treated as regular expressions, highlighted in the editor, and validated with a plain-text fallback when the pattern is invalid.
 - Bulk insertion-order controls set or shift the order of selected entries.
@@ -60,7 +61,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Drag reordering in manual order plus keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown`.
 - Multi-select with `Ctrl/Cmd+click` and `Shift+click`, plus bulk enable, disable, delete, and clear actions.
 - Sort modes: manual order, title, insertion order, last edited, and enabled first. The preference persists locally.
-- Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally.
+- Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally. Entry tags add a dynamic tag-filter row.
+- When a search or filter hides the active entry, it stays visible as a pinned "Current" card so results remain stable.
 - Entry-list keyboard navigation with `ArrowUp`/`ArrowDown`/`Home`/`End`, `Enter`/`Space` activation, and `Ctrl`/`Shift` selection modifiers.
 - Focus and scroll preservation across sidebar re-renders, plus focus restoration after entry/book deletion and dialog dismissal.
 - A storage-failure banner with export and retry actions, and a beforeunload warning when a local save fails.
@@ -81,7 +83,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Entry templates are built-in only; custom template editing and "duplicate as template" are not implemented.
 - Revision history, pre-import backups, and projects share the browser storage quota. IndexedDB is the primary store with a localStorage fallback, and revisions are capped at 12 snapshots and a total character budget. Revisions are not included in project exports.
 - Undo history is session-only and is not restored after reload.
-- Drag reordering is limited to manual order with no active search, because reordering a filtered subset is ambiguous.
+- Drag reordering is limited to manual order with no active search or filter, because reordering a filtered subset is ambiguous.
 - Token count is an estimate of `ceil(characters / 4)`, not a real tokenizer.
 - No lint configuration or committed automated browser test suite yet.
 - The sample project appears on first run; there is no onboarding flow or sample reset.
@@ -104,7 +106,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, and native adapters |
 | `src/sample.js` | First-run demo project |
-| `src/ui/sidebar.js` | Book switcher, search, sorting, selected/drag entry rendering |
+| `src/ui/sidebar.js` | Book switcher, search with match highlighting, tag filters, sorting, and selected/drag/pinned entry rendering |
 | `src/ui/editor.js` | Editor population and statistics |
 | `src/ui/overlays.js` | Confirmation dialog with details/warnings and toasts |
 | `src/utils.js` | IDs, clamp, slugify |
@@ -194,12 +196,13 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 ```text
 {
   id, name, description,
+  tags: string[],
   entries: Entry[],
   createdAt, updatedAt
 }
 ```
 
-`description` is edited from a collapsible sidebar control and is included in native project backups.
+`description` is edited from a collapsible sidebar control and is included in native project backups. `tags` are app-only organization labels that round-trip through native backups but are dropped by interchange adapters.
 
 ### Entry
 
@@ -209,6 +212,7 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 | `title` | string | Author-facing name, maps to ST `comment` / character book `name` |
 | `keys` | string[] | Primary trigger keys |
 | `secondaryKeys` | string[] | Optional secondary keys |
+| `tags` | string[] | App-only organization labels; dropped by interchange adapters |
 | `content` | string | Injected text |
 | `notes` | string | Author-only notes; excluded from interchange exports |
 | `enabled` | boolean | Inverse of ST `disable` |
@@ -368,6 +372,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - The active entry is visually anchored and mirrored in the editor.
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown` and list navigation with the arrow keys, `Home`, and `End`.
+- Search highlights matches in card titles and key summaries and labels the fields that matched. The active entry stays pinned as a "Current" card when search or filters hide it.
+- Entry tags render as card badges and as a dynamic tag-filter row; book tags are edited in the lorebook-information section.
 - Focus returns to the next entry after deletion and to the trigger control after a dialog closes; list scroll and focus survive re-renders.
 - Entry cards show compact IDs, with the full internal ID exposed in a tooltip.
 - Inline options are chips; grouped numeric/enumerated settings live in one injection row.
@@ -446,8 +452,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 70 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 71 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.

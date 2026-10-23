@@ -22,6 +22,7 @@ import {
   getSelectedEntryIds,
   getSelectionAnchorId,
   getState,
+  getTagFilters,
   initStore,
   moveEntry,
   redo,
@@ -35,10 +36,13 @@ import {
   setEntryFilters,
   setSearchQuery,
   setSortMode,
+  setTagFilters,
   toggleEntryFilter,
   toggleEntrySelection,
+  toggleTagFilter,
   undo,
   updateActiveBookDescription,
+  updateActiveBookTags,
   updateActiveEntry
 } from "./store.js";
 import {
@@ -54,6 +58,7 @@ import {
 } from "./storage.js";
 import { diffProjects } from "./diff.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
+import { normalizeTagList } from "./schema.js";
 import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
 import { showDiffDialog } from "./ui/diff.js";
@@ -73,6 +78,8 @@ const refs = {
   bookName: document.querySelector("#book-name"),
   bookDescription: document.querySelector("#book-description"),
   bookDescriptionPreview: document.querySelector("#book-description-preview"),
+  bookTagsContainer: document.querySelector("#book-tags"),
+  bookTagsInput: document.querySelector("#book-tags-input"),
   saveState: document.querySelector("#save-state"),
   storageBanner: document.querySelector("#storage-banner"),
   storageBannerMessage: document.querySelector("#storage-banner-message"),
@@ -103,6 +110,7 @@ const refs = {
   entrySearch: document.querySelector("#entry-search"),
   entrySort: document.querySelector("#entry-sort"),
   entryFilters: document.querySelector("#entry-filters"),
+  tagFilters: document.querySelector("#tag-filters"),
   entryCount: document.querySelector("#entry-count"),
   overviewBtn: document.querySelector("#overview-btn"),
   overviewDialog: document.querySelector("#overview-dialog"),
@@ -158,6 +166,8 @@ const refs = {
   entryKeysInput: document.querySelector("#entry-keys-input"),
   entrySecondaryKeysContainer: document.querySelector("#entry-secondary-keys"),
   entrySecondaryKeysInput: document.querySelector("#entry-secondary-keys-input"),
+  entryTagsContainer: document.querySelector("#entry-tags"),
+  entryTagsInput: document.querySelector("#entry-tags-input"),
   entryContent: document.querySelector("#entry-content"),
   entryNotes: document.querySelector("#entry-notes"),
   entryStatChars: document.querySelector("#entry-stat-chars"),
@@ -195,6 +205,30 @@ refs.secondaryKeyChips = createKeyChips({
   }
 });
 
+refs.entryTagChips = createKeyChips({
+  container: refs.entryTagsContainer,
+  input: refs.entryTagsInput,
+  label: "tag",
+  regex: false,
+  onChange: (tags) => {
+    updateActiveEntry({ tags: normalizeTagList(tags) });
+    renderSidebar(refs);
+    scheduleSave();
+  }
+});
+
+refs.bookTagChips = createKeyChips({
+  container: refs.bookTagsContainer,
+  input: refs.bookTagsInput,
+  label: "book tag",
+  regex: false,
+  onChange: (tags) => {
+    updateActiveBookTags(tags);
+    renderSidebar(refs);
+    scheduleSave();
+  }
+});
+
 let saveTimer = 0;
 let saveFailed = false;
 let unsavedChanges = false;
@@ -205,6 +239,7 @@ const SIDEBAR_STATE_KEY = "lorebook-studio:sidebar-collapsed:v1";
 const SIDEBAR_WIDTH_KEY = "lorebook-studio:sidebar-width:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const FILTER_STATE_KEY = "lorebook-studio:filters:v1";
+const TAG_FILTER_STATE_KEY = "lorebook-studio:tag-filters:v1";
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
 const AUTO_REVISION_INTERVAL_MS = 5 * 60 * 1000;
 const SIDEBAR_MIN_WIDTH = 200;
@@ -253,6 +288,29 @@ function readEntryFilters() {
 function persistEntryFilters(filters) {
   try {
     localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(filters));
+  } catch {
+    return;
+  }
+}
+
+function readTagFilters() {
+  try {
+    const raw = localStorage.getItem(TAG_FILTER_STATE_KEY);
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistTagFilters(tags) {
+  try {
+    localStorage.setItem(TAG_FILTER_STATE_KEY, JSON.stringify(tags));
   } catch {
     return;
   }
@@ -471,6 +529,7 @@ function renderAll() {
   refs.bookName.value = book?.name ?? "";
   refs.bookDescription.value = book?.description ?? "";
   updateBookDescriptionPreview(book?.description ?? "");
+  refs.bookTagChips?.setKeys(book?.tags ?? []);
   renderSidebar(refs);
   renderEditor(refs);
   updateHistoryButtons();
@@ -1570,6 +1629,8 @@ refs.deleteBookBtn.addEventListener("click", () => {
 
 refs.bookSelect.addEventListener("change", (event) => {
   setActiveBook(event.target.value);
+  setTagFilters([]);
+  persistTagFilters([]);
   clearSearch();
   renderAll();
   scheduleSave();
@@ -1828,6 +1889,18 @@ refs.entryFilters.addEventListener("click", (event) => {
 
   toggleEntryFilter(chip.dataset.filter);
   persistEntryFilters(getEntryFilters());
+  renderSidebar(refs);
+});
+
+refs.tagFilters.addEventListener("click", (event) => {
+  const chip = event.target.closest("[data-tag]");
+
+  if (!chip) {
+    return;
+  }
+
+  toggleTagFilter(chip.dataset.tag);
+  persistTagFilters(getTagFilters());
   renderSidebar(refs);
 });
 
@@ -2257,6 +2330,12 @@ const initialFilters = readEntryFilters();
 
 if (initialFilters) {
   setEntryFilters(initialFilters);
+}
+
+const initialTagFilters = readTagFilters();
+
+if (initialTagFilters) {
+  setTagFilters(initialTagFilters);
 }
 
 renderAll();

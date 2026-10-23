@@ -13,6 +13,7 @@ import {
   getEntryFilters,
   getSelectedEntryIds,
   getState,
+  getTagFilters,
   initStore,
   moveEntry,
   redo,
@@ -23,10 +24,13 @@ import {
   setEntriesOrder,
   setEntryFilters,
   setSortMode,
+  setTagFilters,
   toggleEntryFilter,
   toggleEntrySelection,
+  toggleTagFilter,
   undo,
   updateActiveBookDescription,
+  updateActiveBookTags,
   updateActiveEntry
 } from "../src/store.js";
 import { sortEntries } from "../src/ui/sidebar.js";
@@ -198,6 +202,22 @@ test("sets and shifts insertion order for selected entries", () => {
   assert.equal(undo(), true);
   assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_1").order, 500);
   assert.equal(getActiveBook().entries.find((entry) => entry.id === "entry_3").order, 30);
+});
+
+test("updates book tags and tag filters", () => {
+  initStore(createTestProject());
+
+  updateActiveBookTags(["campaign", "campaign", "v2"]);
+  assert.deepEqual(getActiveBook().tags, ["campaign", "v2"]);
+
+  assert.deepEqual(getTagFilters(), []);
+  assert.equal(toggleTagFilter("npc"), true);
+  assert.deepEqual(getTagFilters(), ["npc"]);
+  assert.equal(toggleTagFilter("npc"), false);
+  assert.deepEqual(getTagFilters(), []);
+
+  setTagFilters(["npc", "npc", "vip"]);
+  assert.deepEqual(getTagFilters(), ["npc", "vip"]);
 });
 
 test("toggles entry filters with mutually exclusive status", () => {

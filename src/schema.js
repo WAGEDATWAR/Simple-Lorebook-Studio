@@ -27,6 +27,24 @@ export function normalizeKeyList(value) {
     .filter(Boolean);
 }
 
+export function normalizeTagList(value) {
+  const seen = new Set();
+  const tags = [];
+
+  for (const tag of normalizeKeyList(value)) {
+    const normalized = tag.toLocaleLowerCase();
+
+    if (seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    tags.push(tag);
+  }
+
+  return tags;
+}
+
 export function createEntry(patch = {}) {
   const now = Date.now();
 
@@ -35,6 +53,7 @@ export function createEntry(patch = {}) {
     title: typeof patch.title === "string" ? patch.title : "",
     keys: normalizeKeyList(patch.keys),
     secondaryKeys: normalizeKeyList(patch.secondaryKeys),
+    tags: normalizeTagList(patch.tags),
     content: typeof patch.content === "string" ? patch.content : "",
     notes: typeof patch.notes === "string" ? patch.notes : "",
     enabled: patch.enabled !== false,
@@ -58,6 +77,7 @@ export function createBook(patch = {}) {
     id: typeof patch.id === "string" && patch.id ? patch.id : createId("book"),
     name: typeof patch.name === "string" ? patch.name : "Untitled Lorebook",
     description: typeof patch.description === "string" ? patch.description : "",
+    tags: normalizeTagList(patch.tags),
     entries: Array.isArray(patch.entries) ? patch.entries.map((entry) => createEntry(entry)) : [],
     createdAt: Number.isFinite(patch.createdAt) ? patch.createdAt : now,
     updatedAt: Number.isFinite(patch.updatedAt) ? patch.updatedAt : now,

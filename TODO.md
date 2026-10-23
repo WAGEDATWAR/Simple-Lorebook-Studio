@@ -70,10 +70,10 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 
 ## Organization and Search
 
-- [ ] [P1] Add tags and/or folders for books and entries.
+- [x] [P1] Add tags and/or folders for books and entries.
 - [x] [P1] Add filters for enabled, disabled, always-on, and entries missing keys.
-- [ ] [P1] Highlight search matches and expose why an entry matched.
-- [ ] [P1] Keep search results stable when the active entry is filtered out.
+- [x] [P1] Highlight search matches and expose why an entry matched.
+- [x] [P1] Keep search results stable when the active entry is filtered out.
 - [x] [P1] Add keyboard navigation in the entry list: arrow keys, Home, End, Enter.
 - [x] [P1] Preserve list scroll and focus across mutations and re-renders.
 - [x] [P2] Add a book-level overview with entry count, token totals, and key coverage.
@@ -114,6 +114,8 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Add a proper unsaved-changes strategy for failed localStorage writes.
 - [ ] [P1] Add an onboarding flow and a clear sample-project badge/reset.
 - [ ] [P1] Add a command palette for quick actions.
+- [ ] [P2] Hide field hint text while a field has content, showing it again only when the field is empty or focused.
+- [ ] [P2] Add hover-based hint popup dialogs on desktop for fields and controls with longer explanations.
 - [ ] [P2] Add a light theme or theme tokens once the component set stabilizes.
 - [ ] [P2] Add density options for compact entry lists.
 - [ ] [P2] Add resizable text areas with remembered heights.

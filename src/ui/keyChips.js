@@ -7,7 +7,7 @@ function splitKeys(text) {
     .filter(Boolean);
 }
 
-export function createKeyChips({ container, input, onChange, label = "key" }) {
+export function createKeyChips({ container, input, onChange, label = "key", regex = true }) {
   let keys = [];
   let editingIndex = -1;
 
@@ -79,12 +79,12 @@ export function createKeyChips({ container, input, onChange, label = "key" }) {
     const chip = document.createElement("span");
     const text = document.createElement("span");
     const remove = document.createElement("button");
-    const parsed = parseRegexKey(key);
 
     chip.className = "key-chip";
     chip.setAttribute("role", "listitem");
 
-    if (isRegexKey(key)) {
+    if (regex && isRegexKey(key)) {
+      const parsed = parseRegexKey(key);
       chip.classList.add(parsed.ok ? "is-regex" : "is-regex-invalid");
       chip.title = parsed.ok
         ? `Regular expression: /${parsed.pattern}/${parsed.flags}`

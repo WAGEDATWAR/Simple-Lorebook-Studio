@@ -1,4 +1,4 @@
-import { createBook, createEntry } from "./schema.js";
+import { createBook, createEntry, normalizeTagList } from "./schema.js";
 import { clamp } from "./utils.js";
 
 const HISTORY_LIMIT = 60;
@@ -249,6 +249,10 @@ export function ensureSelections() {
     state.ui.filters[name] = state.ui.filters[name] === true;
   }
 
+  if (!Array.isArray(state.ui.tagFilters)) {
+    state.ui.tagFilters = [];
+  }
+
   if (!state.books.length) {
     state.books.push(createBook({ name: "Untitled Lorebook" }));
   }
@@ -344,6 +348,38 @@ export function toggleEntryFilter(name) {
   return next[name];
 }
 
+export function getTagFilters() {
+  return Array.isArray(state?.ui?.tagFilters) ? [...state.ui.tagFilters] : [];
+}
+
+export function setTagFilters(tags) {
+  if (!state?.ui) {
+    return [];
+  }
+
+  const next = normalizeTagList(tags);
+
+  state.ui.tagFilters = next;
+  clearSelection();
+  return [...next];
+}
+
+export function toggleTagFilter(tag) {
+  const value = String(tag).trim();
+
+  if (!value) {
+    return false;
+  }
+
+  const current = getTagFilters();
+  const next = current.includes(value)
+    ? current.filter((item) => item !== value)
+    : [...current, value];
+
+  setTagFilters(next);
+  return next.includes(value);
+}
+
 export function addBook() {
   captureHistory("add-book", false);
   const book = createBook({ name: "Untitled Lorebook" });
@@ -388,6 +424,25 @@ export function updateActiveBookDescription(description) {
 
   captureHistory(`edit-book-description:${book.id}`);
   book.description = nextDescription;
+  book.updatedAt = Date.now();
+  return book;
+}
+
+export function updateActiveBookTags(tags) {
+  const book = getActiveBook();
+
+  if (!book) {
+    return null;
+  }
+
+  const next = normalizeTagList(tags);
+
+  if (JSON.stringify(book.tags ?? []) === JSON.stringify(next)) {
+    return book;
+  }
+
+  captureHistory(`edit-book-tags:${book.id}`);
+  book.tags = next;
   book.updatedAt = Date.now();
   return book;
 }

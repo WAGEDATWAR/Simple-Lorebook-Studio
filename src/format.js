@@ -26,6 +26,7 @@ export function buildExport(state) {
       id: book.id,
       name: book.name,
       description: book.description,
+      tags: [...(book.tags ?? [])],
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
       extensions: { ...book.extensions },
