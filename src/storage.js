@@ -2,14 +2,20 @@ import { parseProject } from "./format.js";
 import { SCHEMA_VERSION } from "./schema.js";
 import { createSampleProject } from "./sample.js";
 import { createId } from "./utils.js";
+import { createIndexedDbBackend, isIndexedDbAvailable, openDatabase } from "./storage/idb.js";
 
 export const STORAGE_KEY = "lorebook-studio:project:v1";
 export const BACKUP_KEY = "lorebook-studio:pre-import-backup:v1";
 export const REVISIONS_KEY = "lorebook-studio:revisions:v1";
 export const REVISION_KEY_PREFIX = "lorebook-studio:revision:v1:";
 
+const STORAGE_PREFIX = "lorebook-studio:";
 const REVISION_LIMIT = 12;
 const REVISION_CHAR_BUDGET = 1_500_000;
+
+let backend = null;
+let backendName = "unavailable";
+let writeChain = Promise.resolve();
 
 function createProjectPayload(state) {
   return {
@@ -44,9 +50,142 @@ function countProject(project) {
   };
 }
 
-function readRevisionIndex() {
+function isQuotaError(error) {
+  return error?.name === "QuotaExceededError"
+    || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
+    || error?.code === 22
+    || error?.code === 1014;
+}
+
+function enqueue(task) {
+  const run = writeChain.then(task, task);
+  writeChain = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+function createLocalStorageBackend(storage = globalThis.localStorage) {
+  return {
+    name: "localstorage",
+    async get(key) {
+      return storage.getItem(key);
+    },
+    async set(key, value) {
+      storage.setItem(key, value);
+    },
+    async remove(key) {
+      storage.removeItem(key);
+    },
+    async keys() {
+      return Object.keys(storage);
+    }
+  };
+}
+
+function getBackend() {
+  if (!backend) {
+    backend = createLocalStorageBackend();
+    backendName = "localstorage";
+  }
+
+  return backend;
+}
+
+function listLocalStorageKeys() {
   try {
-    const raw = localStorage.getItem(REVISIONS_KEY);
+    return Object.keys(localStorage);
+  } catch {
+    return [];
+  }
+}
+
+async function migrateFromLocalStorage(target) {
+  const keys = listLocalStorageKeys().filter((key) => key.startsWith(STORAGE_PREFIX));
+
+  if (!keys.length) {
+    return { migrated: 0, cleaned: 0 };
+  }
+
+  const existing = await target.get(STORAGE_KEY);
+
+  if (existing !== null) {
+    let cleaned = 0;
+
+    for (const key of keys) {
+      try {
+        localStorage.removeItem(key);
+        cleaned += 1;
+      } catch {
+        continue;
+      }
+    }
+
+    return { migrated: 0, cleaned };
+  }
+
+  const copied = [];
+
+  for (const key of keys) {
+    let value = null;
+
+    try {
+      value = localStorage.getItem(key);
+    } catch {
+      value = null;
+    }
+
+    if (value === null) {
+      continue;
+    }
+
+    try {
+      await target.set(key, value);
+      copied.push(key);
+    } catch {
+      continue;
+    }
+  }
+
+  for (const key of copied) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      continue;
+    }
+  }
+
+  return { migrated: copied.length, cleaned: 0 };
+}
+
+export async function initStorage() {
+  if (backend) {
+    return { ok: true, backend: backendName, migration: null };
+  }
+
+  if (isIndexedDbAvailable()) {
+    try {
+      const database = await openDatabase();
+      const idb = createIndexedDbBackend(database);
+      const migration = await migrateFromLocalStorage(idb);
+      backend = idb;
+      backendName = "indexeddb";
+      return { ok: true, backend: backendName, migration };
+    } catch {
+      backend = null;
+    }
+  }
+
+  backend = createLocalStorageBackend();
+  backendName = "localstorage";
+  return { ok: true, backend: backendName, migration: null };
+}
+
+export function getStorageBackendName() {
+  return backendName;
+}
+
+async function readRevisionIndex() {
+  try {
+    const raw = await getBackend().get(REVISIONS_KEY);
 
     if (!raw) {
       return [];
@@ -90,9 +229,9 @@ function trimRevisions(revisions) {
   return kept;
 }
 
-function readBackupPayload() {
+async function readBackupPayload() {
   try {
-    const raw = localStorage.getItem(BACKUP_KEY);
+    const raw = await getBackend().get(BACKUP_KEY);
 
     if (!raw) {
       return { ok: false, error: "No pre-import backup is available." };
@@ -110,9 +249,9 @@ function readBackupPayload() {
   }
 }
 
-export function loadProject() {
+export async function loadProject() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = await getBackend().get(STORAGE_KEY);
 
     if (raw) {
       const result = parseProject(raw);
@@ -128,103 +267,101 @@ export function loadProject() {
   return createSampleProject();
 }
 
-function isQuotaError(error) {
-  return error?.name === "QuotaExceededError"
-    || error?.name === "NS_ERROR_DOM_QUOTA_REACHED"
-    || error?.code === 22
-    || error?.code === 1014;
+export async function saveProjectDetailed(state) {
+  return enqueue(async () => {
+    try {
+      await getBackend().set(STORAGE_KEY, JSON.stringify(createProjectPayload(state)));
+      return { ok: true, error: "", quotaExceeded: false };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error?.message || "Unknown storage error",
+        quotaExceeded: isQuotaError(error)
+      };
+    }
+  });
 }
 
-export function saveProjectDetailed(state) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(createProjectPayload(state)));
-    return { ok: true, error: "", quotaExceeded: false };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error?.message || "Unknown storage error",
-      quotaExceeded: isQuotaError(error)
-    };
-  }
+export async function saveProject(state) {
+  return (await saveProjectDetailed(state)).ok;
 }
 
-export function saveProject(state) {
-  return saveProjectDetailed(state).ok;
-}
-
-export function getRevisions() {
+export async function getRevisions() {
   return {
     ok: true,
-    revisions: readRevisionIndex()
+    revisions: await readRevisionIndex()
   };
 }
 
-export function saveRevision(state, reason = "Manual snapshot") {
-  const project = createProjectPayload(state);
-  const serialized = JSON.stringify(project);
-  const signature = hashText(serialized);
-  const revisions = readRevisionIndex();
-  const latest = revisions[0] ?? null;
+export async function saveRevision(state, reason = "Manual snapshot") {
+  return enqueue(async () => {
+    const project = createProjectPayload(state);
+    const serialized = JSON.stringify(project);
+    const signature = hashText(serialized);
+    const revisions = await readRevisionIndex();
+    const latest = revisions[0] ?? null;
 
-  if (latest?.signature === signature) {
-    return {
-      ok: true,
-      skipped: true,
-      revision: latest,
-      error: "No changes since the last revision."
-    };
-  }
-
-  if (serialized.length > REVISION_CHAR_BUDGET) {
-    return {
-      ok: false,
-      error: "This project is too large for a local snapshot. Export a project backup instead."
-    };
-  }
-
-  const id = createId("revision");
-  const createdAt = Date.now();
-  const counts = countProject(project);
-  const revision = {
-    id,
-    createdAt,
-    reason: String(reason).trim().slice(0, 120) || "Snapshot",
-    books: counts.books,
-    entries: counts.entries,
-    signature,
-    bytes: serialized.length
-  };
-  const nextRevisions = trimRevisions([revision, ...revisions]);
-  const keptIds = new Set(nextRevisions.map((item) => item.id));
-  const removed = revisions.filter((item) => !keptIds.has(item.id));
-
-  try {
-    localStorage.setItem(revisionKey(id), serialized);
-    localStorage.setItem(REVISIONS_KEY, JSON.stringify(nextRevisions));
-  } catch {
-    try {
-      localStorage.removeItem(revisionKey(id));
-    } catch {
-      return { ok: false, error: "The revision could not be saved." };
+    if (latest?.signature === signature) {
+      return {
+        ok: true,
+        skipped: true,
+        revision: latest,
+        error: "No changes since the last revision."
+      };
     }
 
-    return { ok: false, error: "The revision could not be saved. Browser storage may be full." };
-  }
-
-  for (const item of removed) {
-    try {
-      localStorage.removeItem(revisionKey(item.id));
-    } catch {
-      continue;
+    if (serialized.length > REVISION_CHAR_BUDGET) {
+      return {
+        ok: false,
+        error: "This project is too large for a local snapshot. Export a project backup instead."
+      };
     }
-  }
 
-  return { ok: true, revision };
+    const id = createId("revision");
+    const createdAt = Date.now();
+    const counts = countProject(project);
+    const revision = {
+      id,
+      createdAt,
+      reason: String(reason).trim().slice(0, 120) || "Snapshot",
+      books: counts.books,
+      entries: counts.entries,
+      signature,
+      bytes: serialized.length
+    };
+    const nextRevisions = trimRevisions([revision, ...revisions]);
+    const keptIds = new Set(nextRevisions.map((item) => item.id));
+    const removed = revisions.filter((item) => !keptIds.has(item.id));
+    const target = getBackend();
+
+    try {
+      await target.set(revisionKey(id), serialized);
+      await target.set(REVISIONS_KEY, JSON.stringify(nextRevisions));
+    } catch {
+      try {
+        await target.remove(revisionKey(id));
+      } catch {
+        return { ok: false, error: "The revision could not be saved." };
+      }
+
+      return { ok: false, error: "The revision could not be saved. Browser storage may be full." };
+    }
+
+    for (const item of removed) {
+      try {
+        await target.remove(revisionKey(item.id));
+      } catch {
+        continue;
+      }
+    }
+
+    return { ok: true, revision };
+  });
 }
 
-export function loadRevision(id) {
+export async function loadRevision(id) {
   try {
-    const raw = localStorage.getItem(revisionKey(id));
+    const raw = await getBackend().get(revisionKey(id));
 
     if (!raw) {
       return { ok: false, error: "That revision is no longer available." };
@@ -245,25 +382,27 @@ export function loadRevision(id) {
   }
 }
 
-export function saveProjectBackup(state, reason = "") {
-  try {
-    const createdAt = Date.now();
-    const payload = {
-      version: SCHEMA_VERSION,
-      createdAt,
-      reason: String(reason),
-      project: createProjectPayload(state)
-    };
+export async function saveProjectBackup(state, reason = "") {
+  return enqueue(async () => {
+    try {
+      const createdAt = Date.now();
+      const payload = {
+        version: SCHEMA_VERSION,
+        createdAt,
+        reason: String(reason),
+        project: createProjectPayload(state)
+      };
 
-    localStorage.setItem(BACKUP_KEY, JSON.stringify(payload));
-    return { ok: true, createdAt };
-  } catch {
-    return { ok: false, error: "The pre-import backup could not be saved." };
-  }
+      await getBackend().set(BACKUP_KEY, JSON.stringify(payload));
+      return { ok: true, createdAt };
+    } catch {
+      return { ok: false, error: "The pre-import backup could not be saved." };
+    }
+  });
 }
 
-export function getProjectBackupInfo() {
-  const result = readBackupPayload();
+export async function getProjectBackupInfo() {
+  const result = await readBackupPayload();
 
   if (!result.ok) {
     return result;
@@ -284,8 +423,8 @@ export function getProjectBackupInfo() {
   };
 }
 
-export function loadProjectBackup() {
-  const result = readBackupPayload();
+export async function loadProjectBackup() {
+  const result = await readBackupPayload();
 
   if (!result.ok) {
     return result;

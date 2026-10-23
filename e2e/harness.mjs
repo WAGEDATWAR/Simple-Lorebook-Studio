@@ -212,6 +212,7 @@ export class Page {
     this.client = client;
     this.errors = [];
     this.consoleErrors = [];
+    this.lastUrl = "about:blank";
 
     client.on("Runtime.exceptionThrown", (params) => {
       const details = params?.exceptionDetails;
@@ -222,6 +223,10 @@ export class Page {
       if (params?.type === "error") {
         this.consoleErrors.push((params.args ?? []).map((arg) => arg.value ?? arg.description ?? "").join(" "));
       }
+    });
+
+    client.on("Page.javascriptDialogOpening", () => {
+      client.send("Page.handleJavaScriptDialog", { accept: true }).catch(() => {});
     });
   }
 
@@ -278,6 +283,7 @@ export class Page {
     const loaded = this.client.once("Page.loadEventFired");
     await this.client.send("Page.navigate", { url });
     await loaded;
+    this.lastUrl = url;
     await this.waitFor("document.readyState === 'complete'");
   }
 
@@ -313,19 +319,39 @@ export class Page {
   }
 
   async resetStorage({ seed = null } = {}) {
-    const lines = [
-      'for (const key of Object.keys(localStorage)) { if (key.startsWith("lorebook-studio:")) localStorage.removeItem(key); }'
-    ];
+    const appUrl = this.lastUrl;
+    const origin = new URL(appUrl).origin;
 
-    if (seed) {
-      lines.push(`localStorage.setItem("lorebook-studio:project:v1", ${JSON.stringify(JSON.stringify(seed))});`);
+    // Clear all origin storage (including IndexedDB) from a blank page so the
+    // app's unload handlers cannot repopulate it during the navigation.
+    await this.navigate("about:blank");
+
+    try {
+      await this.client.send("Storage.clearDataForOrigin", { origin, storageTypes: "all" });
+    } catch {
+      // Fall back to clearing localStorage only when the Storage domain is unavailable.
+      await this.navigate(appUrl);
+      await this.evaluate(`(() => {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith("lorebook-studio:")) localStorage.removeItem(key);
+        }
+        return true;
+      })()`);
+      return;
+    }
+
+    if (!seed) {
+      await this.navigate(appUrl);
+      return;
     }
 
     const script = await this.client.send("Page.addScriptToEvaluateOnNewDocument", {
-      source: `(() => { ${lines.join(" ")} })();`
+      source: `(() => {
+        localStorage.setItem("lorebook-studio:project:v1", ${JSON.stringify(JSON.stringify(seed))});
+      })();`
     });
 
-    await this.reload();
+    await this.navigate(appUrl);
     await this.client.send("Page.removeScriptToEvaluateOnNewDocument", { identifier: script.identifier });
   }
 

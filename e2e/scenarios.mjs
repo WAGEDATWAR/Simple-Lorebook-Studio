@@ -39,6 +39,27 @@ async function importFile(page, path) {
   await page.waitFor('document.querySelector("#diff-dialog")?.open');
 }
 
+async function readIndexedDbProject(page) {
+  return page.evaluate(`(async () => {
+    const database = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("lorebook-studio");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const value = await new Promise((resolve, reject) => {
+      const transaction = database.transaction("keyval", "readonly");
+      const request = transaction.objectStore("keyval").get("lorebook-studio:project:v1");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return {
+      value: typeof value === "string" ? value : "",
+      localStorageProject: localStorage.getItem("lorebook-studio:project:v1")
+    };
+  })()`);
+}
+
 async function pressKey(page, selector, key, { ctrl = false, shift = false, alt = false } = {}) {
   await page.evaluate(`(() => {
     const target = document.querySelector(${JSON.stringify(selector)});
@@ -178,16 +199,58 @@ export const scenarios = [
     }
   },
   {
+    name: "stores the project in IndexedDB",
+    async run(page) {
+      await resetApp(page);
+      const result = await readIndexedDbProject(page);
+      assert.ok(result.value.includes("Aurora Vale"));
+      assert.equal(result.localStorageProject, null);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "migrates a localStorage project into IndexedDB",
+    async run(page) {
+      const seed = {
+        version: 1,
+        activeBookId: "book_migrate",
+        activeEntryId: "entry_migrate",
+        books: [{
+          id: "book_migrate",
+          name: "Migrated Book",
+          description: "",
+          entries: [{
+            id: "entry_migrate",
+            title: "Migrated Entry",
+            keys: ["migrated"],
+            content: "From localStorage",
+            order: 10
+          }]
+        }]
+      };
+
+      await page.resetStorage({ seed });
+      await page.waitFor('document.querySelector("#book-name")?.value === "Migrated Book"');
+      const result = await readIndexedDbProject(page);
+      assert.ok(result.value.includes("Migrated Book"));
+      assert.equal(result.localStorageProject, null);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "recovers from a failed local save",
     async run(page) {
       await resetApp(page);
       await page.evaluate(`(() => {
-        window.__originalSetItem = Storage.prototype.setItem;
-        Storage.prototype.setItem = function () {
+        const fail = () => {
           const error = new Error("Quota exceeded");
           error.name = "QuotaExceededError";
           throw error;
         };
+        window.__originalSetItem = Storage.prototype.setItem;
+        window.__originalPut = IDBObjectStore.prototype.put;
+        Storage.prototype.setItem = fail;
+        IDBObjectStore.prototype.put = fail;
         return true;
       })()`);
 
@@ -203,7 +266,7 @@ export const scenarios = [
       await sleep(200);
       assert.equal(await page.evaluate('document.querySelector("#storage-banner").hidden'), false);
 
-      await page.evaluate('Storage.prototype.setItem = window.__originalSetItem; true');
+      await page.evaluate('Storage.prototype.setItem = window.__originalSetItem; IDBObjectStore.prototype.put = window.__originalPut; true');
       await page.click("#storage-retry-btn");
       await page.waitFor('document.querySelector("#storage-banner").hidden === true');
       await page.waitFor('document.querySelector("#save-state").dataset.state === "saved"');
@@ -299,6 +362,7 @@ export const scenarios = [
       await setValue(page, "#entry-content", `${original}\n\nRevision baseline\nRevision follow-up`);
       await page.click("#history-btn");
       await page.waitFor('document.querySelector("#history-dialog")?.open');
+      await page.waitFor('document.querySelector("[data-revision-compare]")');
       await page.click("[data-revision-compare]");
       await page.waitFor('document.querySelector("#diff-dialog")?.open');
       const summary = await page.evaluate('document.querySelector("#diff-summary").textContent');

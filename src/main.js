@@ -42,6 +42,7 @@ import {
 import {
   getProjectBackupInfo,
   getRevisions,
+  initStorage,
   loadProject,
   loadProjectBackup,
   loadRevision,
@@ -596,9 +597,9 @@ function scrollEntryCardIntoView(id) {
   card?.scrollIntoView({ block: "nearest" });
 }
 
-function flushSave() {
+async function flushSave() {
   window.clearTimeout(saveTimer);
-  const result = saveProjectDetailed(getState());
+  const result = await saveProjectDetailed(getState());
   setSaveState(result.ok ? "saved" : "error");
 
   if (!result.ok) {
@@ -614,7 +615,7 @@ function flushSave() {
     saveFailed = false;
     unsavedChanges = false;
     hideStorageBanner();
-    maybeSaveRevision();
+    await maybeSaveRevision();
   }
 
   return result.ok;
@@ -673,8 +674,8 @@ function formatBackupDate(timestamp) {
   });
 }
 
-function refreshBackupStatus() {
-  const info = getProjectBackupInfo();
+async function refreshBackupStatus() {
+  const info = await getProjectBackupInfo();
 
   if (!info.ok) {
     refs.backupStatus.textContent = "No backup saved.";
@@ -699,21 +700,21 @@ function setHistoryStatus(message, tone = "") {
   refs.historyStatus.classList.toggle("is-success", tone === "success");
 }
 
-function maybeSaveRevision() {
-  const latest = getRevisions().revisions[0] ?? null;
+async function maybeSaveRevision() {
+  const latest = (await getRevisions()).revisions[0] ?? null;
 
   if (!latest) {
-    recordRevision("Initial snapshot");
+    await recordRevision("Initial snapshot");
     return;
   }
 
   if (Date.now() - latest.createdAt >= AUTO_REVISION_INTERVAL_MS) {
-    recordRevision("Automatic snapshot");
+    await recordRevision("Automatic snapshot");
   }
 }
 
-function getRevisionComparison(id) {
-  const revisions = getRevisions().revisions;
+async function getRevisionComparison(id, knownRevisions = null) {
+  const revisions = knownRevisions ?? (await getRevisions()).revisions;
   const index = revisions.findIndex((revision) => revision.id === id);
 
   if (index < 0) {
@@ -721,7 +722,7 @@ function getRevisionComparison(id) {
   }
 
   const revision = revisions[index];
-  const current = loadRevision(id);
+  const current = await loadRevision(id);
 
   if (!current.ok) {
     return current;
@@ -731,7 +732,7 @@ function getRevisionComparison(id) {
   let previousProject = { books: [] };
 
   if (previousRevision) {
-    const previous = loadRevision(previousRevision.id);
+    const previous = await loadRevision(previousRevision.id);
 
     if (!previous.ok) {
       return previous;
@@ -794,8 +795,8 @@ function renderRevisionDelta(diff) {
   return delta;
 }
 
-function renderHistoryDialog() {
-  const revisions = getRevisions().revisions;
+async function renderHistoryDialog() {
+  const revisions = (await getRevisions()).revisions;
   const count = revisions.length;
 
   refs.historyCount.textContent = `${count} ${count === 1 ? "snapshot" : "snapshots"}`;
@@ -820,7 +821,7 @@ function renderHistoryDialog() {
     const compare = document.createElement("button");
     const restore = document.createElement("button");
     const createdAt = formatBackupDate(revision.createdAt);
-    const comparison = getRevisionComparison(revision.id);
+    const comparison = await getRevisionComparison(revision.id, revisions);
 
     item.className = "history-item";
     info.className = "history-item-info";
@@ -853,17 +854,18 @@ function renderHistoryDialog() {
   refs.historyList.append(fragment);
 }
 
-function openHistoryDialog() {
+async function openHistoryDialog() {
   setHistoryStatus("");
-  renderHistoryDialog();
 
   if (!refs.historyDialog.open) {
     refs.historyDialog.showModal();
   }
+
+  await renderHistoryDialog();
 }
 
 async function handleCompareRevision(id) {
-  const comparison = getRevisionComparison(id);
+  const comparison = await getRevisionComparison(id);
 
   if (!comparison.ok) {
     toast(comparison.error, "error");
@@ -896,8 +898,8 @@ async function handleCompareRevision(id) {
 }
 
 async function handleRestoreRevision(id) {
-  const revision = getRevisions().revisions.find((item) => item.id === id);
-  const loaded = loadRevision(id);
+  const revision = (await getRevisions()).revisions.find((item) => item.id === id);
+  const loaded = await loadRevision(id);
 
   if (!loaded.ok) {
     refs.historyDialog.close();
@@ -923,11 +925,11 @@ async function handleRestoreRevision(id) {
   });
 
   if (!accepted) {
-    openHistoryDialog();
+    await openHistoryDialog();
     return;
   }
 
-  const current = recordRevision("Before restoring a revision");
+  const current = await recordRevision("Before restoring a revision");
 
   if (!current.ok && !current.skipped) {
     const proceed = await confirmAction({
@@ -937,7 +939,7 @@ async function handleRestoreRevision(id) {
     });
 
     if (!proceed) {
-      openHistoryDialog();
+      await openHistoryDialog();
       return;
     }
   }
@@ -951,11 +953,11 @@ async function handleRestoreRevision(id) {
   }
 
   renderAll();
-  flushSave();
+  await flushSave();
   toast("Revision restored", "success");
 }
 
-function openExportDialog() {
+async function openExportDialog() {
   const book = getActiveBook();
 
   if (!book) {
@@ -964,9 +966,9 @@ function openExportDialog() {
   }
 
   renderExportOptions();
-  refreshBackupStatus();
   refs.exportBookName.textContent = `${book.name.trim() || "Untitled Lorebook"} · ${book.entries.length} ${book.entries.length === 1 ? "entry" : "entries"} · book exports use the active lorebook`;
   refs.exportDialog.showModal();
+  await refreshBackupStatus();
 }
 
 function exportProjectBackup() {
@@ -1006,7 +1008,7 @@ function handleExport(formatId) {
 }
 
 async function handleRestoreBackup() {
-  const backup = loadProjectBackup();
+  const backup = await loadProjectBackup();
 
   if (!backup.ok) {
     toast(backup.error, "error");
@@ -1042,7 +1044,7 @@ async function handleRestoreBackup() {
   }
 
   renderAll();
-  flushSave();
+  await flushSave();
   toast("Pre-import backup restored", "success");
 }
 
@@ -1450,7 +1452,7 @@ async function handleImport(file) {
     return;
   }
 
-  const backup = saveProjectBackup(getState(), `Before importing ${file.name}`);
+  const backup = await saveProjectBackup(getState(), `Before importing ${file.name}`);
 
   if (!backup.ok) {
     const proceed = await confirmAction({
@@ -1465,7 +1467,7 @@ async function handleImport(file) {
   }
 
   const merged = mergeProject(getState(), parsed.project, strategy);
-  recordRevision(`Before importing ${file.name}`);
+  await recordRevision(`Before importing ${file.name}`);
   replaceProject(merged.project);
 
   const sortMode = readSortMode();
@@ -1476,8 +1478,8 @@ async function handleImport(file) {
 
   clearSearch();
   renderAll();
-  flushSave();
-  recordRevision(`Imported ${file.name}`);
+  await flushSave();
+  await recordRevision(`Imported ${file.name}`);
   toast(importResultMessage(strategy, parsed, merged.stats, entryCount), "success");
 
   if (backup.ok) {
@@ -1888,10 +1890,12 @@ refs.deleteEntryBtn.addEventListener("click", () => {
 refs.undoBtn.addEventListener("click", handleUndo);
 refs.redoBtn.addEventListener("click", handleRedo);
 
-refs.historyBtn.addEventListener("click", openHistoryDialog);
+refs.historyBtn.addEventListener("click", () => {
+  openHistoryDialog().catch(() => setHistoryStatus("Couldn't read local snapshots.", "error"));
+});
 
-refs.historySaveBtn.addEventListener("click", () => {
-  const result = recordRevision("Manual snapshot");
+refs.historySaveBtn.addEventListener("click", async () => {
+  const result = await recordRevision("Manual snapshot");
 
   if (!result.ok) {
     setHistoryStatus(result.error, "error");
@@ -1901,7 +1905,7 @@ refs.historySaveBtn.addEventListener("click", () => {
     setHistoryStatus("Snapshot saved.", "success");
   }
 
-  renderHistoryDialog();
+  await renderHistoryDialog();
 });
 
 refs.historyCloseBtn.addEventListener("click", () => {
@@ -2011,14 +2015,16 @@ refs.importInput.addEventListener("change", async () => {
   }
 });
 
-refs.exportBtn.addEventListener("click", openExportDialog);
+refs.exportBtn.addEventListener("click", () => {
+  openExportDialog();
+});
 
 refs.storageExportBtn.addEventListener("click", () => {
   exportProjectBackup();
 });
 
-refs.storageRetryBtn.addEventListener("click", () => {
-  if (flushSave()) {
+refs.storageRetryBtn.addEventListener("click", async () => {
+  if (await flushSave()) {
     toast("Changes saved locally", "success");
   } else {
     toast("Still unable to save. Export a backup to protect your work.", "error");
@@ -2088,7 +2094,7 @@ function isTypingTarget(target) {
     && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 }
 
-document.addEventListener("keydown", (event) => {
+document.addEventListener("keydown", async (event) => {
   if (event.isComposing || document.querySelector("dialog[open]")) {
     return;
   }
@@ -2122,7 +2128,7 @@ document.addEventListener("keydown", (event) => {
 
   if (modifier && key === "s") {
     event.preventDefault();
-    const ok = flushSave();
+    const ok = await flushSave();
 
     if (ok) {
       toast("Project saved", "success");
@@ -2145,9 +2151,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  const result = saveProjectDetailed(getState());
-
-  if (!result.ok) {
+  if (unsavedChanges || saveFailed) {
     event.preventDefault();
     event.returnValue = "";
   }
@@ -2155,14 +2159,7 @@ window.addEventListener("beforeunload", (event) => {
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
-    const result = saveProjectDetailed(getState());
-
-    if (!result.ok) {
-      saveFailed = true;
-      unsavedChanges = true;
-      setSaveState("error");
-      showStorageBanner(result);
-    }
+    flushSave();
   }
 });
 
@@ -2172,7 +2169,8 @@ setDetailsCollapsed(storedDetailsState ?? window.matchMedia("(max-width: 720px)"
 const storedSidebarState = readSidebarState();
 setSidebarCollapsed(storedSidebarState ?? false, false);
 
-initStore(loadProject());
+await initStorage();
+initStore(await loadProject());
 
 const initialSortMode = readSortMode();
 
@@ -2197,11 +2195,11 @@ if (storedSidebarWidth === null) {
   applySidebarWidth(storedSidebarWidth);
 }
 
-const initialSave = saveProjectDetailed(getState());
+const initialSave = await saveProjectDetailed(getState());
 
 if (initialSave.ok) {
   setSaveState("saved");
-  maybeSaveRevision();
+  await maybeSaveRevision();
 } else {
   saveFailed = true;
   unsavedChanges = true;

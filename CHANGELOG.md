@@ -4,6 +4,12 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-10-22
+
+### Changed
+
+- Moved project, backup, and revision persistence to IndexedDB with a one-time migration from localStorage and a localStorage fallback.
+
 ## [0.5.4] - 2026-10-22
 
 ### Added

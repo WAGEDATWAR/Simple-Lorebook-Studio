@@ -41,7 +41,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Entry fields: title, trigger keys, secondary keys, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
 - Live character, word, and approximate token counts.
 - A book overview with entry counts, approximate total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, and the longest entry.
-- Debounced localStorage autosave with a save-state indicator and unload flush.
+- Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
+- One-time migration of existing localStorage projects, backups, and snapshots into IndexedDB.
 - Native project JSON import and full-project backup export.
 - Single-book export to native, SillyTavern World Info v2, and Chub JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
@@ -75,7 +76,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Import currently replaces the project; merge and append strategies are not implemented.
 - Author notes stay inside native project files and are deliberately excluded from SillyTavern and Chub exports.
 - Entry templates are built-in only; custom template editing and "duplicate as template" are not implemented.
-- Revision history, pre-import backups, and projects share the localStorage quota. Revisions are capped at 12 snapshots and a total character budget, and are not included in project exports.
+- Revision history, pre-import backups, and projects share the browser storage quota. IndexedDB is the primary store with a localStorage fallback, and revisions are capped at 12 snapshots and a total character budget. Revisions are not included in project exports.
 - Undo history is session-only and is not restored after reload.
 - Drag reordering is limited to manual order with no active search, because reordering a filtered subset is ambiguous.
 - Token count is an estimate of `ceil(characters / 4)`, not a real tokenizer.
@@ -91,7 +92,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/main.js` | Event wiring, save orchestration, shortcuts, import/export flow |
 | `src/schema.js` | Canonical project/book/entry factories and position values |
 | `src/store.js` | Project state, mutation actions, undo/redo, selection, and sorting mode |
-| `src/storage.js` | Project localStorage load/save, pre-import backup, and revision snapshots |
+| `src/storage.js` | Async project/backup/revision persistence with IndexedDB primary and localStorage fallback |
+| `src/storage/idb.js` | IndexedDB open, key-value backend, and store helpers |
 | `src/validation.js` | Book-level content, key, and insertion-order issue detection |
 | `src/overview.js` | Book metrics, token summaries, and key coverage |
 | `src/templates.js` | Built-in entry templates and patch builders |
@@ -126,7 +128,7 @@ Open `http://localhost:4173`. The app has no build step and no runtime dependenc
 
 ### Shape
 
-Static single-page application using native ES modules. No framework, no bundler, no backend. The browser is the source of truth during a session; localStorage is the persistence layer.
+Static single-page application using native ES modules. No framework, no bundler, no backend. The browser is the source of truth during a session; IndexedDB is the primary persistence layer, with a localStorage fallback and a one-time migration.
 
 ```text
 index.html
@@ -136,7 +138,7 @@ index.html
        -> validation.js (book-level issue checks)
        -> overview.js (book metrics)
        -> templates.js (built-in starting points)
-       -> storage.js -> format.js -> formats/ (detection + adapters)
+       -> storage.js -> storage/idb.js -> format.js -> formats/ (detection + adapters)
        -> ui/{sidebar,editor,overlays}.js (targeted rendering)
 ```
 
@@ -145,7 +147,7 @@ index.html
 1. User input updates the active entry or book through `store.js`.
 2. Mutating actions capture a bounded project snapshot; rapid edits to the same field group coalesce into one history step.
 3. The UI re-renders only the affected regions. Typing in the editor avoids replacing editor inputs.
-4. A 400 ms debounced save writes the normalized project to localStorage and updates the header state. Successful saves also create an initial snapshot and at most one automatic revision every five minutes when the project has changed.
+4. A 400 ms debounced save writes the normalized project to IndexedDB and updates the header state. Successful saves also create an initial snapshot and at most one automatic revision every five minutes when the project has changed.
 5. Import parses, detects, and normalizes the file; the preview reports format and warnings. Confirmation snapshots and backs up the current project, then replaces state, captures a history step, and re-renders.
 6. Export chooses either the full project backup or one active-book adapter, serializes it, and downloads it. Backup restore is available from the export dialog and is undoable through project replacement.
 7. Revision restore snapshots the current project, confirms the replacement, restores the selected snapshot through the same project parser, and refreshes the editor through normal project replacement.
@@ -438,7 +440,7 @@ Current checks:
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
 - `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, description edits, duplication, selection, bulk actions, reordering, sorting, entry filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 64 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, keyboard navigation and focus restoration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search, entry filters, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
@@ -466,6 +468,7 @@ Planned checks:
 - Single-book export is the primary authoring flow; full project export is a backup.
 - Pre-import backups use the same native project container and remain restorable from the export dialog.
 - Revision history stores up to 12 local project snapshots within a total size budget, with deduplication by content signature. Restoring snapshots the current state first.
+- IndexedDB is the primary persistence layer; localStorage remains a fallback and migration source. Storage access is async, with a serialized write queue to avoid index races.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks
@@ -473,7 +476,7 @@ Planned checks:
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Frontend schemas drift | Broken or lossy imports | Adapter isolation, fixtures, schema version checks |
-| localStorage quota (~5 MB) | Failed saves with large books | Save-state error, IndexedDB migration, export backups |
+| Browser storage quota | Failed saves with large books | IndexedDB primary storage, save-state error, export backups |
 | Destructive import | Data loss | Confirmation, preview phase, automatic pre-import backup |
 | Approximate tokens mislead authors | Budget errors | Label as approximate; implement real tokenizer |
 | Vanilla rendering complexity | UI bugs as features grow | Targeted renders, tests, small UI modules |

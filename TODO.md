@@ -95,7 +95,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 ## Data and Persistence
 
 - [x] [P0] Add a local backup before destructive imports.
-- [ ] [P1] Move project storage to IndexedDB with a migration from localStorage.
+- [x] [P1] Move project storage to IndexedDB with a migration from localStorage.
 - [x] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
 - [x] [P1] Add revision history or automatic snapshots with restore.
 - [ ] [P1] Add File System Access API support for opening and saving project files.
