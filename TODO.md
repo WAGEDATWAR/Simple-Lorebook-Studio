@@ -54,6 +54,13 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Medium] Support markdown preview for content if the target frontends interpret it consistently.
 - [ ] [P2] [Low] Add per-entry color or tag labels for visual grouping.
 - [ ] [P2] [Medium] Add a "peek" preview showing the text as it would be injected.
+- [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
+- [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
+- [ ] [P1] [Low] Add issue-type filtering by clicking the issue-type counts in the validation dialog.
+- [ ] [P2] [Low] Add bulk tag assignment (add/remove tags) for selected entries.
+- [ ] [P2] [Medium] Suggest trigger keys from the title and content, and offer one-click add.
+- [ ] [P2] [Medium] Add configurable default entry properties (always on, selective, case sensitive, match whole words) for new entries.
+- [ ] [P2] [High] Add entry links/references such as `[[Entry Title]]` with validation for broken links.
 
 ## Interoperability
 
@@ -74,6 +81,8 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Very High] Support character card containers (PNG/CHARX) and embedded character books.
 - [ ] [P2] [Medium] Add JSON/YAML plain-export options for scripting.
 - [ ] [P2] [Medium] Add a schema reference page generated from the canonical model.
+- [ ] [P2] [Low] Support drag-and-drop file import onto the app window.
+- [ ] [P2] [Medium] Add a print/PDF export of a lorebook for offline review and editing passes.
 
 ## Organization and Search
 
@@ -86,6 +95,8 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P2] [Medium] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] [Low] Add pinned or recent entries.
 - [x] [P2] [Medium] Add overlapping key reports and key coverage summaries.
+- [ ] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
+- [ ] [P2] [Medium] Add a regex search mode for the entry list, complementing regex keys.
 
 ## Context and Token Tools
 
@@ -109,6 +120,9 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Very High] Add cloud sync only if it can remain opt-in, private, and simple.
 - [x] [P2] [Low] Add storage usage reporting.
 - [ ] [P2] [High] Add encrypted local projects if sensitive content becomes a requirement.
+- [ ] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
+- [ ] [P1] [Medium] Add a project data-integrity check and repair tool for corrupt or partially migrated local data.
+- [ ] [P2] [Medium] Show a "what changed since your last session" summary on load.
 
 ## UI, UX, and Accessibility
 
@@ -151,20 +165,3 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Medium] Add an app icon set and social preview assets.
 - [ ] [P2] [Medium] Plan a small beta with real SillyTavern and Chub users.
 - [ ] [P2] [Medium] Collect round-trip failures from real books and convert them into retrieval fixtures.
-
-## Suggestions
-
-Proposed improvements surfaced during development that are not yet scheduled. `[S]` marks a suggestion rather than a planned backlog item; priority is a rough guess.
-
-- [ ] [S] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
-- [ ] [S] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
-- [ ] [S] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
-- [ ] [S] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
-- [ ] [S] [P1] [Medium] Add a project data-integrity check and repair tool for corrupt or partially migrated local data.
-- [ ] [S] [P2] [Low] Add bulk tag assignment (add/remove tags) for selected entries.
-- [ ] [S] [P2] [Medium] Suggest trigger keys from the title and content, and offer one-click add.
-- [ ] [S] [P2] [Medium] Add a regex search mode for the entry list, complementing regex keys.
-- [ ] [S] [P2] [Low] Support drag-and-drop file import onto the app window.
-- [ ] [S] [P2] [High] Add entry links/references such as `[[Entry Title]]` with validation for broken links.
-- [ ] [S] [P2] [Medium] Show a "what changed since your last session" summary on load.
-- [ ] [S] [P2] [Medium] Add a print/PDF export of a lorebook for offline review and editing passes.
