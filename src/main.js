@@ -48,6 +48,7 @@ import {
 import {
   getProjectBackupInfo,
   getRevisions,
+  getStorageUsage,
   initStorage,
   loadProject,
   loadProjectBackup,
@@ -97,6 +98,9 @@ const refs = {
   historyCloseBtn: document.querySelector("#history-close"),
   importBtn: document.querySelector("#import-btn"),
   exportBtn: document.querySelector("#export-btn"),
+  openFileBtn: document.querySelector("#open-file-btn"),
+  saveFileBtn: document.querySelector("#save-file-btn"),
+  fileName: document.querySelector("#file-name"),
   importInput: document.querySelector("#import-input"),
   exportDialog: document.querySelector("#export-dialog"),
   exportBookName: document.querySelector("#export-book-name"),
@@ -104,6 +108,13 @@ const refs = {
   exportCancelBtn: document.querySelector("#export-cancel"),
   backupStatus: document.querySelector("#backup-status"),
   restoreBackupBtn: document.querySelector("#restore-backup-btn"),
+  backupReminder: document.querySelector("#backup-reminder"),
+  backupReminderExportBtn: document.querySelector("#backup-reminder-export-btn"),
+  backupReminderDismissBtn: document.querySelector("#backup-reminder-dismiss-btn"),
+  storageUsageTotal: document.querySelector("#storage-usage-total"),
+  storageUsageBackend: document.querySelector("#storage-usage-backend"),
+  storageUsageProject: document.querySelector("#storage-usage-project"),
+  storageUsageRevisions: document.querySelector("#storage-usage-revisions"),
   bookSelect: document.querySelector("#book-select"),
   newBookBtn: document.querySelector("#new-book-btn"),
   deleteBookBtn: document.querySelector("#delete-book-btn"),
@@ -232,6 +243,7 @@ refs.bookTagChips = createKeyChips({
 let saveTimer = 0;
 let saveFailed = false;
 let unsavedChanges = false;
+let projectFileHandle = null;
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
@@ -240,6 +252,10 @@ const SIDEBAR_WIDTH_KEY = "lorebook-studio:sidebar-width:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const FILTER_STATE_KEY = "lorebook-studio:filters:v1";
 const TAG_FILTER_STATE_KEY = "lorebook-studio:tag-filters:v1";
+const LAST_BACKUP_KEY = "lorebook-studio:last-backup:v1";
+const BACKUP_SNOOZE_KEY = "lorebook-studio:backup-reminder-snooze:v1";
+const BACKUP_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const BACKUP_SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 const SORT_MODES = new Set(["manual", "title", "order", "updated", "enabled"]);
 const AUTO_REVISION_INTERVAL_MS = 5 * 60 * 1000;
 const SIDEBAR_MIN_WIDTH = 200;
@@ -505,6 +521,202 @@ function showStorageBanner(result) {
 function hideStorageBanner() {
   if (refs.storageBanner) {
     refs.storageBanner.hidden = true;
+  }
+}
+
+function readTimestamp(key) {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTimestamp(key, value = Date.now()) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    return;
+  }
+}
+
+function markBackupExported() {
+  writeTimestamp(LAST_BACKUP_KEY);
+}
+
+function showBackupReminder() {
+  if (refs.backupReminder) {
+    refs.backupReminder.hidden = false;
+  }
+}
+
+function hideBackupReminder() {
+  if (refs.backupReminder) {
+    refs.backupReminder.hidden = true;
+  }
+}
+
+function snoozeBackupReminder() {
+  writeTimestamp(BACKUP_SNOOZE_KEY);
+  hideBackupReminder();
+}
+
+function maybeRemindBackup() {
+  const last = readTimestamp(LAST_BACKUP_KEY);
+
+  if (last === null) {
+    writeTimestamp(LAST_BACKUP_KEY);
+    return;
+  }
+
+  if (Date.now() - last < BACKUP_REMINDER_INTERVAL_MS) {
+    return;
+  }
+
+  const snoozed = readTimestamp(BACKUP_SNOOZE_KEY);
+
+  if (snoozed && Date.now() - snoozed < BACKUP_SNOOZE_MS) {
+    return;
+  }
+
+  showBackupReminder();
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let index = 0;
+
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+
+  const precision = value >= 10 || index === 0 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[index]}`;
+}
+
+async function refreshStorageUsage() {
+  const usage = await getStorageUsage();
+
+  refs.storageUsageBackend.textContent = usage.backend === "indexeddb" ? "IndexedDB" : "localStorage";
+  refs.storageUsageProject.textContent = formatBytes(usage.projectBytes);
+  refs.storageUsageRevisions.textContent = `${usage.revisionCount} · ${formatBytes(usage.revisionBytes)}`;
+
+  if (Number.isFinite(usage.usage) && Number.isFinite(usage.quota) && usage.quota > 0) {
+    const percent = Math.round((usage.usage / usage.quota) * 100);
+    refs.storageUsageTotal.textContent = `${formatBytes(usage.usage)} of ${formatBytes(usage.quota)} used (${percent}%)`;
+  } else {
+    refs.storageUsageTotal.textContent = "Browser estimate unavailable";
+  }
+}
+
+function supportsFileSystemAccess() {
+  return typeof window.showOpenFilePicker === "function" && typeof window.showSaveFilePicker === "function";
+}
+
+function suggestedProjectFilename() {
+  const stamp = new Date().toISOString().slice(0, 10);
+  return `lorebook-studio-project-${stamp}.json`;
+}
+
+async function ensureWritePermission(handle) {
+  if (typeof handle.queryPermission !== "function") {
+    return true;
+  }
+
+  const options = { mode: "readwrite" };
+
+  if (await handle.queryPermission(options) === "granted") {
+    return true;
+  }
+
+  return (await handle.requestPermission(options)) === "granted";
+}
+
+function updateFileLabel() {
+  if (!refs.fileName) {
+    return;
+  }
+
+  if (projectFileHandle) {
+    refs.fileName.textContent = projectFileHandle.name;
+    refs.fileName.hidden = false;
+  } else {
+    refs.fileName.textContent = "";
+    refs.fileName.hidden = true;
+  }
+}
+
+async function openProjectFile() {
+  if (!supportsFileSystemAccess()) {
+    toast("Opening project files isn't supported in this browser.", "error");
+    return;
+  }
+
+  let handle;
+
+  try {
+    [handle] = await window.showOpenFilePicker({
+      types: [{ description: "Lorebook Studio project", accept: { "application/json": [".json"] } }],
+      multiple: false
+    });
+  } catch {
+    return;
+  }
+
+  let file;
+
+  try {
+    file = await handle.getFile();
+  } catch {
+    toast("Couldn't read that file.", "error");
+    return;
+  }
+
+  await handleImport(file, { fileHandle: handle });
+}
+
+async function saveProjectFile({ saveAs = false } = {}) {
+  if (!supportsFileSystemAccess()) {
+    toast("Saving to a file isn't supported in this browser.", "error");
+    return;
+  }
+
+  try {
+    let handle = projectFileHandle;
+
+    if (!handle || saveAs) {
+      handle = await window.showSaveFilePicker({
+        suggestedName: suggestedProjectFilename(),
+        types: [{ description: "Lorebook Studio project", accept: { "application/json": [".json"] } }]
+      });
+    }
+
+    if (!await ensureWritePermission(handle)) {
+      toast("Write permission for that file was denied.", "error");
+      return;
+    }
+
+    const writable = await handle.createWritable();
+    await writable.write(JSON.stringify(buildExport(getState()), null, 2));
+    await writable.close();
+    projectFileHandle = handle;
+    updateFileLabel();
+    markBackupExported();
+    hideBackupReminder();
+    toast(`Saved to ${handle.name}`, "success");
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      return;
+    }
+
+    toast("Couldn't save to that file.", "error");
   }
 }
 
@@ -1059,11 +1271,14 @@ async function openExportDialog() {
   refs.exportBookName.textContent = `${book.name.trim() || "Untitled Lorebook"} · ${book.entries.length} ${book.entries.length === 1 ? "entry" : "entries"} · book exports use the active lorebook`;
   refs.exportDialog.showModal();
   await refreshBackupStatus();
+  await refreshStorageUsage();
 }
 
 function exportProjectBackup() {
   const stamp = new Date().toISOString().slice(0, 10);
   downloadJson(buildExport(getState()), `lorebook-studio-project-${stamp}.json`);
+  markBackupExported();
+  hideBackupReminder();
   toast("Project backup exported", "success");
 }
 
@@ -1518,7 +1733,7 @@ function importResultMessage(strategy, parsed, stats, entryCount) {
   return `Imported ${parsed.format}: ${entryCount} ${entryCount === 1 ? "entry" : "entries"}`;
 }
 
-async function handleImport(file) {
+async function handleImport(file, { fileHandle = null } = {}) {
   if (!file) {
     return;
   }
@@ -1611,6 +1826,11 @@ async function handleImport(file) {
 
   if (backup.ok) {
     toast("Previous project saved as a pre-import backup");
+  }
+
+  if (fileHandle) {
+    projectFileHandle = fileHandle;
+    updateFileLabel();
   }
 }
 
@@ -2167,6 +2387,22 @@ refs.exportBtn.addEventListener("click", () => {
   openExportDialog();
 });
 
+refs.openFileBtn.addEventListener("click", () => {
+  openProjectFile();
+});
+
+refs.saveFileBtn.addEventListener("click", () => {
+  saveProjectFile();
+});
+
+refs.backupReminderExportBtn.addEventListener("click", () => {
+  exportProjectBackup();
+});
+
+refs.backupReminderDismissBtn.addEventListener("click", () => {
+  snoozeBackupReminder();
+});
+
 refs.storageExportBtn.addEventListener("click", () => {
   exportProjectBackup();
 });
@@ -2274,6 +2510,18 @@ document.addEventListener("keydown", async (event) => {
     return;
   }
 
+  if (modifier && key === "o" && supportsFileSystemAccess()) {
+    event.preventDefault();
+    await openProjectFile();
+    return;
+  }
+
+  if (modifier && event.shiftKey && key === "s" && supportsFileSystemAccess()) {
+    event.preventDefault();
+    await saveProjectFile({ saveAs: true });
+    return;
+  }
+
   if (modifier && key === "s") {
     event.preventDefault();
     const ok = await flushSave();
@@ -2360,3 +2608,10 @@ if (initialSave.ok) {
   setSaveState("error");
   showStorageBanner(initialSave);
 }
+
+if (supportsFileSystemAccess()) {
+  refs.openFileBtn.hidden = false;
+  refs.saveFileBtn.hidden = false;
+}
+
+maybeRemindBackup();

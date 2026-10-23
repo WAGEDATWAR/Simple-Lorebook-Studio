@@ -32,6 +32,7 @@
           <span class="save-dot" aria-hidden="true"></span>
           <span class="save-label">Saved</span>
         </span>
+        <span id="file-name" class="file-name" hidden></span>
       </div>
 
       <div class="topbar-actions">
@@ -53,6 +54,18 @@
           </button>
         </div>
         <span class="action-divider" aria-hidden="true"></span>
+        <button id="open-file-btn" class="btn" type="button" aria-label="Open project file" title="Open a project file (Ctrl+O)" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>
+          </svg>
+          <span class="btn-label">Open</span>
+        </button>
+        <button id="save-file-btn" class="btn" type="button" aria-label="Save project file" title="Save project file (Ctrl+Shift+S)" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5 3h11l3 3v15H5V3Z"/><path d="M8 3v6h7V3"/><path d="M8 14h8"/>
+          </svg>
+          <span class="btn-label">Save</span>
+        </button>
         <button id="import-btn" class="btn" type="button" aria-label="Import lorebook" title="Import a lorebook or Lorebook Studio project">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
@@ -77,6 +90,21 @@
         <button id="storage-export-btn" class="btn btn-primary" type="button">Export backup</button>
         <button id="storage-retry-btn" class="btn" type="button">Retry save</button>
         <button id="storage-dismiss-btn" class="icon-btn" type="button" aria-label="Dismiss storage warning" title="Dismiss">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+            <path d="m6 6 12 12"/><path d="m18 6-12 12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="backup-reminder" class="storage-banner is-info" role="status" hidden>
+      <div class="storage-banner-text">
+        <strong>Time for a backup</strong>
+        <span id="backup-reminder-message">It's been a while since you exported a project backup. Export one to keep your work recoverable.</span>
+      </div>
+      <div class="storage-banner-actions">
+        <button id="backup-reminder-export-btn" class="btn btn-primary" type="button">Export backup</button>
+        <button id="backup-reminder-dismiss-btn" class="icon-btn" type="button" aria-label="Dismiss backup reminder" title="Dismiss">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
             <path d="m6 6 12 12"/><path d="m18 6-12 12"/>
           </svg>
@@ -419,6 +447,19 @@
           <button id="restore-backup-btn" class="btn" type="button" disabled>Restore</button>
         </div>
         <p class="backup-note">Created automatically before an import replaces the current project.</p>
+      </section>
+      <section class="backup-block" aria-labelledby="storage-usage-title">
+        <div class="backup-heading">
+          <div>
+            <h3 id="storage-usage-title">Local storage</h3>
+            <p id="storage-usage-total">Unavailable</p>
+          </div>
+        </div>
+        <dl class="storage-usage-list">
+          <dt>Backend</dt><dd id="storage-usage-backend">&mdash;</dd>
+          <dt>Project</dt><dd id="storage-usage-project">&mdash;</dd>
+          <dt>Snapshots</dt><dd id="storage-usage-revisions">&mdash;</dd>
+        </dl>
       </section>
       <div class="dialog-actions">
         <button id="export-cancel" class="btn" type="button">Close</button>

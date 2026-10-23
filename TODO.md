@@ -98,11 +98,11 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done.
 - [x] [P1] Move project storage to IndexedDB with a migration from localStorage.
 - [x] [P1] Handle storage quota failures with clear recovery instructions and export shortcuts.
 - [x] [P1] Add revision history or automatic snapshots with restore.
-- [ ] [P1] Add File System Access API support for opening and saving project files.
-- [ ] [P1] Add a periodic reminder to export a backup.
+- [x] [P1] Add File System Access API support for opening and saving project files.
+- [x] [P1] Add a periodic reminder to export a backup.
 - [ ] [P2] Add optional project import/export of the full UI state.
 - [ ] [P2] Add cloud sync only if it can remain opt-in, private, and simple.
-- [ ] [P2] Add storage usage reporting.
+- [x] [P2] Add storage usage reporting.
 - [ ] [P2] Add encrypted local projects if sensitive content becomes a requirement.
 
 ## UI, UX, and Accessibility

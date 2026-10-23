@@ -1,6 +1,6 @@
 {
   "name": "lorebook-studio",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "private": true,
   "type": "module",
   "description": "A local-first web editor for LLM roleplay lorebooks.",

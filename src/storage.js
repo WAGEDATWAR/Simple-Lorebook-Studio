@@ -9,7 +9,6 @@ export const BACKUP_KEY = "lorebook-studio:pre-import-backup:v1";
 export const REVISIONS_KEY = "lorebook-studio:revisions:v1";
 export const REVISION_KEY_PREFIX = "lorebook-studio:revision:v1:";
 
-const STORAGE_PREFIX = "lorebook-studio:";
 const REVISION_LIMIT = 12;
 const REVISION_CHAR_BUDGET = 1_500_000;
 
@@ -98,8 +97,15 @@ function listLocalStorageKeys() {
   }
 }
 
+function isManagedKey(key) {
+  return key === STORAGE_KEY
+    || key === BACKUP_KEY
+    || key === REVISIONS_KEY
+    || key.startsWith(REVISION_KEY_PREFIX);
+}
+
 async function migrateFromLocalStorage(target) {
-  const keys = listLocalStorageKeys().filter((key) => key.startsWith(STORAGE_PREFIX));
+  const keys = listLocalStorageKeys().filter(isManagedKey);
 
   if (!keys.length) {
     return { migrated: 0, cleaned: 0 };
@@ -420,6 +426,60 @@ export async function getProjectBackupInfo() {
     reason: typeof payload.reason === "string" ? payload.reason : "",
     books,
     entries
+  };
+}
+
+export async function getStorageUsage() {
+  const target = getBackend();
+  let projectBytes = 0;
+  let backupBytes = 0;
+  let revisions = [];
+
+  try {
+    const raw = await target.get(STORAGE_KEY);
+    projectBytes = raw ? raw.length : 0;
+  } catch {
+    projectBytes = 0;
+  }
+
+  try {
+    const raw = await target.get(BACKUP_KEY);
+    backupBytes = raw ? raw.length : 0;
+  } catch {
+    backupBytes = 0;
+  }
+
+  try {
+    revisions = await readRevisionIndex();
+  } catch {
+    revisions = [];
+  }
+
+  const revisionBytes = revisions.reduce((total, revision) => (
+    total + (Number.isFinite(revision.bytes) ? revision.bytes : 0)
+  ), 0);
+  let usage = null;
+  let quota = null;
+
+  if (typeof navigator !== "undefined" && navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      usage = Number.isFinite(estimate.usage) ? estimate.usage : null;
+      quota = Number.isFinite(estimate.quota) ? estimate.quota : null;
+    } catch {
+      usage = null;
+    }
+  }
+
+  return {
+    ok: true,
+    backend: backendName,
+    projectBytes,
+    backupBytes,
+    revisionCount: revisions.length,
+    revisionBytes,
+    usage,
+    quota
   };
 }
 

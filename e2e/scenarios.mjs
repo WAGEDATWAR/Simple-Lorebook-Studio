@@ -350,6 +350,60 @@ export const scenarios = [
     }
   },
   {
+    name: "keeps local UI preferences across reloads",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate(`(() => {
+        const select = document.querySelector("#entry-sort");
+        select.value = "title";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      })()`);
+      await page.waitFor('document.querySelector("#entry-sort")?.value === "title"');
+
+      await page.reload();
+      await page.waitFor('document.querySelector("#book-name")?.value');
+      await page.waitFor('document.querySelector("#entry-sort")?.value === "title"');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "reports local storage usage in the export dialog",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#export-btn");
+      await page.waitFor('document.querySelector("#export-dialog")?.open');
+      await page.waitFor('document.querySelector("#storage-usage-backend").textContent === "IndexedDB"');
+      const project = await page.evaluate('document.querySelector("#storage-usage-project").textContent');
+      assert.match(project, /B|KB|MB/);
+      const total = await page.evaluate('document.querySelector("#storage-usage-total").textContent');
+      assert.ok(total.length > 0);
+      await page.click("#export-cancel");
+      await page.waitFor('!document.querySelector("#export-dialog")?.open');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "reminds about backups and records an export",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate(`(() => {
+        localStorage.setItem("lorebook-studio:last-backup:v1", String(Date.now() - 8 * 24 * 60 * 60 * 1000));
+        localStorage.removeItem("lorebook-studio:backup-reminder-snooze:v1");
+        return true;
+      })()`);
+      await page.reload();
+      await page.waitFor('document.querySelector("#book-name")?.value');
+      await page.waitFor('document.querySelector("#backup-reminder")?.hidden === false');
+
+      await page.click("#backup-reminder-export-btn");
+      await page.waitFor('document.querySelector("#backup-reminder")?.hidden === true');
+      const last = await page.evaluate('Number(localStorage.getItem("lorebook-studio:last-backup:v1"))');
+      assert.ok(Date.now() - last < 60000);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "stores the project in IndexedDB",
     async run(page) {
       await resetApp(page);

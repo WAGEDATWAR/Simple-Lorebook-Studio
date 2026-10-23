@@ -48,6 +48,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
 - One-time migration of existing localStorage projects, backups, and snapshots into IndexedDB.
 - Native project JSON import and full-project backup export.
+- File System Access API support for opening and saving project files in place, with the topbar Open/Save controls and `Ctrl+O`/`Ctrl+Shift+S` shown only when the browser supports the API.
+- A periodic backup reminder banner when no project backup has been exported for a week, with a three-day snooze on dismiss.
+- Storage usage reporting in the export dialog: active backend, project size, snapshot count and size, and the browser usage/quota estimate.
 - Single-book export to native, SillyTavern World Info v2, and Chub JSON.
 - Chub, SillyTavern World Info, and character-book import through format adapters.
 - Import preview with detected format, file name, book and entry counts, adapter warnings, and a diff of added, removed, and changed books and entries.
@@ -68,7 +71,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - A storage-failure banner with export and retry actions, and a beforeunload warning when a local save fails.
 - Compact entry ID badges use source IDs when available and a stable compact fallback for native entries.
 - Destructive actions behind a styled confirmation dialog.
-- Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
+- Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
 - Responsive layout with a stacked sidebar/editor arrangement on narrow screens.
 - Auto-sized library sidebar with a 200-460 px drag/keyboard resize range, wrapped controls, and a collapsible 50 px rail. Width and collapse state persist locally.
 - Sample "Aurora Vale" project so the interface is meaningful on first run.
@@ -361,7 +364,9 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Import confirmation is a diff review with format, counts, warnings, an import strategy control, and added, removed, or changed books and entries. It creates a pre-import backup before applying and leaves backup restore one click away in the export dialog.
 - Import strategies are replace, append to matching lorebooks by name, and merge by title. The diff and confirm label update live when the strategy changes.
 - Diff reviews summarize changes, list affected entries, and expand the first changed entry. Content and description changes use unified line diffs.
-- The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets.
+- The export dialog offers a full project backup plus single-book native, SillyTavern, and Chub targets, and reports local storage usage.
+- When File System Access is available, Open and Save write project files directly and remember the chosen file for the session; otherwise Import/Export remain the fallback.
+- A backup reminder appears when no project backup has been exported for a week and can be snoozed for three days.
 - Book descriptions live in a collapsible lorebook-information section with a one-line preview.
 - The lorebook-information section also exposes the overview and validation controls, keeping entry count and sorting separate.
 - The validation control summarizes issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
@@ -452,8 +457,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 71 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import, native and frontend fixture round-trips, capabilities, unsupported files, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 72 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run release:check` verifies that `package.json`, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
@@ -489,7 +494,8 @@ Planned checks:
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Frontend schemas drift | Broken or lossy imports | Adapter isolation, fixtures, schema version checks |
-| Browser storage quota | Failed saves with large books | IndexedDB primary storage, save-state error, export backups |
+| Browser storage quota | Failed saves with large books | IndexedDB primary storage, save-state error, export backups, storage usage reporting |
+| File System Access is Chrome-only | Open/Save unavailable elsewhere | Feature-detect and hide controls; Import/Export remain the fallback |
 | Destructive import | Data loss | Confirmation, preview phase, automatic pre-import backup |
 | Approximate tokens mislead authors | Budget errors | Label as approximate; implement real tokenizer |
 | Vanilla rendering complexity | UI bugs as features grow | Targeted renders, tests, small UI modules |

@@ -4,6 +4,18 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-10-22
+
+### Added
+
+- File System Access API support for opening and saving project files, with topbar Open/Save controls and `Ctrl+O`/`Ctrl+Shift+S`.
+- A periodic backup reminder with an export shortcut and a three-day snooze.
+- Storage usage reporting in the export dialog.
+
+### Fixed
+
+- The IndexedDB migration no longer clears unrelated `lorebook-studio:*` localStorage keys, so UI preferences, layout, and backup timestamps survive reloads.
+
 ## [0.5.7] - 2026-10-22
 
 ### Added

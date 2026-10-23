@@ -40,6 +40,7 @@ const {
   REVISION_KEY_PREFIX,
   getProjectBackupInfo,
   getRevisions,
+  getStorageUsage,
   loadProject,
   loadProjectBackup,
   loadRevision,
@@ -97,6 +98,23 @@ test("stores and restores a pre-import backup", async () => {
   assert.equal(restored.project.books[0].name, "Original Book");
   assert.equal(restored.project.books[0].entries[0].title, "Original Entry");
   assert.equal((await loadProject()).books[0].name, "Replacement Book");
+});
+
+test("reports storage usage", async () => {
+  memory.clear();
+  const state = createState("Usage Book", "Entry");
+  await saveProject(state);
+  await saveRevision(state, "Snapshot");
+
+  const usage = await getStorageUsage();
+
+  assert.equal(usage.ok, true);
+  assert.equal(usage.backend, "localstorage");
+  assert.ok(usage.projectBytes > 0);
+  assert.equal(usage.revisionCount, 1);
+  assert.ok(usage.revisionBytes > 0);
+  assert.equal(usage.usage, null);
+  assert.equal(usage.quota, null);
 });
 
 test("reports unreadable backups without replacing the project", async () => {
