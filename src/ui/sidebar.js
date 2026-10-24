@@ -1,15 +1,7 @@
+import { analyzeEntryQuery } from "../search.js";
 import { getActiveBook, getSelectedEntryIds, getState } from "../store.js";
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-
-const QUERY_FIELDS = [
-  { key: "title", label: "title", read: (entry) => entry.title },
-  { key: "content", label: "content", read: (entry) => entry.content },
-  { key: "notes", label: "notes", read: (entry) => entry.notes ?? "" },
-  { key: "keys", label: "keys", read: (entry) => entry.keys.join(", ") },
-  { key: "secondaryKeys", label: "secondary keys", read: (entry) => entry.secondaryKeys.join(", ") },
-  { key: "tags", label: "tags", read: (entry) => (entry.tags ?? []).join(", ") }
-];
 
 function entryLabel(entry) {
   return entry.title.trim() || "Untitled entry";
@@ -23,18 +15,6 @@ function keySummary(entry) {
   const visible = entry.keys.slice(0, 3).join(" · ");
   const remaining = entry.keys.length - 3;
   return remaining > 0 ? `${visible} +${remaining}` : visible;
-}
-
-function analyzeQuery(entry, query) {
-  if (!query) {
-    return { matched: true, fields: [] };
-  }
-
-  const fields = QUERY_FIELDS
-    .filter((field) => String(field.read(entry)).toLowerCase().includes(query))
-    .map((field) => field.label);
-
-  return { matched: fields.length > 0, fields };
 }
 
 function matchesFilters(entry, filters) {
@@ -294,7 +274,7 @@ export function renderSidebar(refs) {
   const matches = new Map();
   const filtered = sortEntries(
     entries.filter((entry) => {
-      const match = analyzeQuery(entry, query);
+      const match = analyzeEntryQuery(entry, query);
       matches.set(entry.id, match);
       return match.matched && matchesFilters(entry, filters) && matchesTagFilters(entry, tagFilters);
     }),

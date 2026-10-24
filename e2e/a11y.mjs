@@ -51,6 +51,17 @@ const states = [
     await page.click("#about-btn");
     await page.waitFor('document.querySelector("#about-dialog")?.open');
   } },
+  { name: "global search dialog", setup: async (page) => {
+    await page.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))');
+    await page.waitFor('document.querySelector("#global-search-dialog")?.open');
+    await page.evaluate(`(() => {
+      const input = document.querySelector("#global-search-input");
+      input.value = "harbor";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    })()`);
+    await page.waitFor('document.querySelectorAll(".global-search-item").length > 0');
+  } },
   { name: "integrity dialog", setup: async (page) => {
     await page.click("#about-btn");
     await page.waitFor('document.querySelector("#about-dialog")?.open');

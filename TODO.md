@@ -29,7 +29,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P1] [High] Add an interactive visual node-based activation graph to the context simulation view.
 - [ ] [P2] [Medium] Add configurable model/tokenizer presets.
 - [ ] [P2] [Medium] Add context window presets for common frontend configurations.
-- [ ] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
+- [ ] [P2] [Medium] Add bulk operations based on token size.
 - [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
 
@@ -94,6 +94,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P2] [Medium] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] [Low] Add pinned or recent entries.
 - [x] [P2] [Medium] Add overlapping key reports and key coverage summaries.
+- [x] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
 - [ ] [P2] [Medium] Add a regex search mode for the entry list, complementing regex keys.
 
 ## Context and Token Tools
@@ -102,7 +103,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Very High] Replace the character/4 estimate with a real cl100k tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
 - [x] [P1] [High] Add a context simulation view showing likely activation order and injected text.
 - [x] [P1] [Medium] Add key collision and unreachable-entry detection.
-- [ ] [P2] [Medium] Add bulk operations based on token size.
 - [ ] [P2] [Medium] Cache tokenization results per entry revision.
 
 ## Data and Persistence
@@ -140,6 +140,23 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Low] Add a keyboard shortcuts reference dialog.
 - [ ] [P2] [Low] Add a focus mode that hides the sidebar while writing.
 - [ ] [P2] [Low] Tune toast timing and prevent duplicate failure toasts.
+
+## QoL and Polish
+
+Small, low-risk improvements that make the app feel finished. Generally `[P2] [Low]`.
+
+- [ ] [P2] [Low] Hide the `Repair` button in the integrity check when no issues are found.
+- [ ] [P2] [Low] Allow multi-select of issue-type filters in the Issues list.
+- [ ] [P2] [Low] Remember and restore the last active entry per lorebook when switching books.
+- [ ] [P2] [Low] Add a keyboard shortcut to duplicate the active entry (`Ctrl/Cmd+D`).
+- [ ] [P2] [Low] Add a "Reset filters" action to the sidebar when a search or filter hides everything.
+- [ ] [P2] [Low] Add a "Clear search" affordance to the sidebar empty state.
+- [ ] [P2] [Low] Add `aria-keyshortcuts` to buttons that expose a keyboard shortcut.
+- [ ] [P2] [Low] Add a "Copy entry" action that copies the title, keys, and content to the clipboard.
+- [ ] [P2] [Low] Add `Ctrl/Cmd+Enter` to run the context simulation from the input.
+- [ ] [P2] [Low] Truncate long lorebook names in the switcher and expose the full name in a tooltip.
+- [ ] [P2] [Low] Show the app version in the browser tab title.
+- [ ] [P2] [Low] Add a changelog link to the About panel.
 
 ## Engineering and QA
 

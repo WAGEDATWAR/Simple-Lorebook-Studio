@@ -38,6 +38,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
 - Search across title, content, trigger keys, secondary keys, author notes, and tags, with matched text highlighted and a per-card note explaining which fields matched.
+- Global search across every lorebook (`Ctrl/Cmd+Shift+F`), grouped by lorebook, with a jump to the matching entry.
 - Entry fields: title, trigger keys, secondary keys, tags, content, author-only notes, enabled state, always-on, selective, case sensitivity, whole-word matching, insertion order, position, and trigger probability.
 - Lorebooks and entries carry optional tags, edited as chips. Entry tags drive a tag-filter row in the sidebar and appear as badges on entry cards.
 - Trigger and secondary keys are edited as chips: add with Enter/comma, paste comma- or newline-separated lists, remove with the chip button or Backspace, and double-click a chip to edit it.
@@ -80,7 +81,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - A storage-failure banner with export and retry actions, and a beforeunload warning when a local save fails.
 - Compact entry ID badges use source IDs when available and a stable compact fallback for native entries.
 - Destructive actions behind a styled confirmation dialog.
-- Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+K` command palette, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
+- Keyboard shortcuts: `/` search, `Ctrl/Cmd+Shift+F` global search, `Alt+N` new entry, `Ctrl/Cmd+K` command palette, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
 - Responsive layout with a stacked sidebar/editor arrangement on narrow screens.
 - Auto-sized library sidebar with a 200-460 px drag/keyboard resize range, wrapped controls, and a collapsible 50 px rail. Width and collapse state persist locally.
 - Sample "Aurora Vale" project so the interface is meaningful on first run, marked so it can be identified.
@@ -117,6 +118,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/templates.js` | Built-in entry templates and patch builders |
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/commands.js` | Pure command-palette filtering |
+| `src/search.js` | Shared entry query analysis and cross-lorebook search |
 | `src/simulation.js` | Pure context activation simulation and key matching |
 | `src/migrations.js` | Append-only project schema migrations |
 | `src/integrity.js` | Project integrity checks and repair |
@@ -141,6 +143,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/limits.test.js` | Import size and project schema limit tests |
 | `test/commands.test.js` | Command-palette filtering tests |
 | `test/simulation.test.js` | Context activation and key-matching tests |
+| `test/search.test.js` | Entry query analysis and cross-lorebook search tests |
 | `test/migrations.test.js` | Schema migration and version handling tests |
 | `test/integrity.test.js` | Project integrity check and repair tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
@@ -407,6 +410,7 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Multi-selected entries are distinct from the active entry; a bulk action bar appears only while a selection exists.
 - Drag reordering is available in manual order without a search query. Each card also supports keyboard reordering with `Alt+ArrowUp`/`Alt+ArrowDown` and list navigation with the arrow keys, `Home`, and `End`.
 - Search highlights matches in card titles and key summaries and labels the fields that matched. The active entry stays pinned as a "Current" card when search or filters hide it.
+- Global search (`Ctrl/Cmd+Shift+F`) searches every lorebook, groups results by lorebook, and switches to the matching entry when a result is chosen.
 - Entry tags render as card badges and as a dynamic tag-filter row; book tags are edited in the lorebook-information section.
 - Focus returns to the next entry after deletion and to the trigger control after a dialog closes; list scroll and focus survive re-renders.
 - Entry cards show compact IDs, with the full internal ID exposed in a tooltip.
@@ -488,8 +492,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, project integrity, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 109 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, validation issue-type filtering, data-integrity checks, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, project integrity, cross-lorebook search, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 112 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, global search, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, validation issue-type filtering, data-integrity checks, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.

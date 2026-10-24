@@ -67,6 +67,7 @@ import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { createSampleProject } from "./sample.js";
 import { createProject, normalizeTagList } from "./schema.js";
+import { searchProject } from "./search.js";
 import { SIMULATION_REASONS, simulateContext } from "./simulation.js";
 import { createTokenizer, estimateTokens } from "./tokenizer/client.js";
 import { buildBookOverview } from "./overview.js";
@@ -151,6 +152,11 @@ const refs = {
   integrityResults: document.querySelector("#integrity-results"),
   integrityRepairBtn: document.querySelector("#integrity-repair"),
   integrityCloseBtn: document.querySelector("#integrity-close"),
+  globalSearchDialog: document.querySelector("#global-search-dialog"),
+  globalSearchInput: document.querySelector("#global-search-input"),
+  globalSearchSummary: document.querySelector("#global-search-summary"),
+  globalSearchResults: document.querySelector("#global-search-results"),
+  globalSearchCloseBtn: document.querySelector("#global-search-close"),
   guideDialog: document.querySelector("#guide-dialog"),
   guideCloseBtn: document.querySelector("#guide-close"),
   bookSelect: document.querySelector("#book-select"),
@@ -766,6 +772,79 @@ async function handleIntegrityRepair() {
   toast("Repaired project data", "success");
 }
 
+function renderGlobalSearch() {
+  const query = refs.globalSearchInput.value;
+  const result = searchProject(getState(), query);
+
+  refs.globalSearchResults.replaceChildren();
+
+  if (!result.query) {
+    refs.globalSearchSummary.textContent = "Type to search every lorebook.";
+    return;
+  }
+
+  refs.globalSearchSummary.textContent = result.total
+    ? `${result.total} ${result.total === 1 ? "entry" : "entries"} in ${result.groups.length} ${result.groups.length === 1 ? "lorebook" : "lorebooks"}.`
+    : `No entries match "${query.trim()}".`;
+
+  for (const group of result.groups) {
+    const section = document.createElement("section");
+    const heading = document.createElement("h3");
+    const count = document.createElement("span");
+    const list = document.createElement("div");
+
+    section.className = "global-search-group";
+    heading.className = "global-search-group-title";
+    heading.textContent = group.book.name.trim() || "Untitled Lorebook";
+    count.className = "global-search-group-count";
+    count.textContent = String(group.entries.length);
+    heading.append(count);
+    list.className = "global-search-list";
+
+    for (const item of group.entries) {
+      const button = document.createElement("button");
+      const title = document.createElement("span");
+      const meta = document.createElement("span");
+
+      button.type = "button";
+      button.className = "global-search-item";
+      button.dataset.bookId = group.book.id;
+      button.dataset.entryId = item.entry.id;
+      title.className = "global-search-item-title";
+      title.textContent = item.entry.title.trim() || "Untitled entry";
+      meta.className = "global-search-item-meta";
+      meta.textContent = `Matched: ${item.fields.join(", ")}`;
+      button.append(title, meta);
+      list.append(button);
+    }
+
+    section.append(heading, list);
+    refs.globalSearchResults.append(section);
+  }
+}
+
+function openGlobalSearchDialog() {
+  refs.globalSearchInput.value = "";
+  renderGlobalSearch();
+
+  if (!refs.globalSearchDialog.open) {
+    refs.globalSearchDialog.showModal();
+  }
+
+  refs.globalSearchInput.focus();
+}
+
+function handleGlobalSearchJump(bookId, entryId) {
+  refs.globalSearchDialog.close();
+  setActiveBook(bookId);
+  clearSearch();
+  setActiveEntry(entryId);
+  renderAll();
+  scrollEntryCardIntoView(entryId);
+  focusEntryCard(entryId);
+  scheduleSave();
+}
+
 function openGuideDialog() {
   if (!refs.guideDialog.open) {
     refs.guideDialog.showModal();
@@ -883,6 +962,7 @@ function buildCommands() {
     { title: "Getting started", keywords: ["guide", "help", "docs"], run: openGuideDialog },
     { title: "Show welcome", keywords: ["onboarding", "start"], run: openOnboardingDialog },
     { title: "Start empty lorebook", keywords: ["new", "blank", "reset"], run: startEmptyProject },
+    { title: "Search all lorebooks", hint: "Ctrl+Shift+F", keywords: ["global", "find", "everywhere"], run: openGlobalSearchDialog },
     { title: "Check data integrity", keywords: ["repair", "diagnostics", "snapshots"], run: () => openIntegrityDialog() },
     { title: "About Lorebook Studio", keywords: ["version", "privacy", "info"], run: () => openAboutDialog() }
   ];
@@ -3040,6 +3120,26 @@ refs.integrityDialog.addEventListener("click", (event) => {
   }
 });
 
+refs.globalSearchInput.addEventListener("input", renderGlobalSearch);
+
+refs.globalSearchResults.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-entry-id]");
+
+  if (item) {
+    handleGlobalSearchJump(item.dataset.bookId, item.dataset.entryId);
+  }
+});
+
+refs.globalSearchCloseBtn.addEventListener("click", () => {
+  refs.globalSearchDialog.close();
+});
+
+refs.globalSearchDialog.addEventListener("click", (event) => {
+  if (event.target === refs.globalSearchDialog) {
+    refs.globalSearchDialog.close();
+  }
+});
+
 refs.aboutCloseBtn.addEventListener("click", () => {
   refs.aboutDialog.close();
 });
@@ -3211,6 +3311,12 @@ document.addEventListener("keydown", async (event) => {
   if (modifier && !event.altKey && key === "k") {
     event.preventDefault();
     openCommandPalette(buildCommands());
+    return;
+  }
+
+  if (modifier && event.shiftKey && !event.altKey && key === "f") {
+    event.preventDefault();
+    openGlobalSearchDialog();
     return;
   }
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.7.2">
+  <meta name="app-version" content="0.7.3">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -694,6 +694,22 @@
         <button id="sample-reset" class="btn btn-primary" type="button">Reset to the sample</button>
         <button id="sample-empty" class="btn" type="button">Start with an empty lorebook</button>
         <button id="sample-cancel" class="btn" type="button">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="global-search-dialog" class="dialog global-search-dialog" aria-labelledby="global-search-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Global search</p>
+        <h2 id="global-search-title">Search all lorebooks</h2>
+        <p id="global-search-summary" class="dialog-copy" aria-live="polite">Type to search every lorebook.</p>
+      </div>
+      <label class="sr-only" for="global-search-input">Search all lorebooks</label>
+      <input id="global-search-input" class="global-search-input" type="search" placeholder="Search titles, content, keys, notes, and tags…" autocomplete="off" spellcheck="false">
+      <div id="global-search-results" class="global-search-results"></div>
+      <div class="dialog-actions">
+        <button id="global-search-close" class="btn" type="button">Close</button>
       </div>
     </div>
   </dialog>

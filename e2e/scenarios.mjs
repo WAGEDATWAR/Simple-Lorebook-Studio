@@ -718,6 +718,32 @@ export const scenarios = [
     }
   },
   {
+    name: "searches across all lorebooks",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#new-book-btn");
+      await page.waitFor('document.querySelectorAll("#book-select option").length === 2');
+      await page.click("#add-entry-btn");
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 1');
+      await setValue(page, "#entry-title", "Harbor Watch");
+      await setValue(page, "#entry-content", "A watch on the harbor.");
+      await page.waitFor('document.querySelector("#save-state")?.dataset.state === "saved"');
+
+      await page.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))');
+      await page.waitFor('document.querySelector("#global-search-dialog")?.open');
+
+      await setValue(page, "#global-search-input", "harbor");
+      await page.waitFor('document.querySelectorAll(".global-search-item").length >= 1');
+
+      const groups = await page.evaluate('document.querySelectorAll(".global-search-group").length');
+      assert.ok(groups >= 2, `expected matches in at least two lorebooks, saw ${groups}`);
+
+      await page.evaluate('document.querySelector(".global-search-item").click(); true');
+      await page.waitFor('!document.querySelector("#global-search-dialog")?.open');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "checks project data integrity",
     async run(page) {
       await resetApp(page);

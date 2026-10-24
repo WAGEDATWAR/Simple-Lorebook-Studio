@@ -4,6 +4,13 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-10-22
+
+### Added
+
+- Global search across all lorebooks (`Ctrl/Cmd+Shift+F`), grouped by lorebook with a jump to the matching entry.
+- A QoL and Polish backlog section in `TODO.md`.
+
 ## [0.7.2] - 2026-10-22
 
 ### Added

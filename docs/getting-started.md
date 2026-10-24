@@ -28,6 +28,7 @@ Lorebook Studio is a local-first editor for lorebooks used in LLM roleplay front
 | Shortcut | Action |
 | --- | --- |
 | `/` | Focus search |
+| `Ctrl/Cmd+Shift+F` | Search all lorebooks |
 | `Alt+N` | New entry |
 | `Ctrl/Cmd+K` | Command palette |
 | `Ctrl/Cmd+S` | Save project |
