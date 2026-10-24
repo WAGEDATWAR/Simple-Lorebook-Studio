@@ -1,6 +1,6 @@
 {
   "name": "lorebook-studio",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "description": "A local-first web editor for LLM roleplay lorebooks.",
@@ -10,10 +10,14 @@
     "test": "node --test",
     "test:e2e": "node --no-warnings e2e/run.mjs",
     "test:all": "npm test && npm run test:e2e",
+    "a11y": "node --no-warnings e2e/a11y.mjs",
     "check": "node scripts/check.mjs",
     "lint": "node scripts/lint.mjs",
     "format": "node scripts/format.mjs",
     "format:write": "node scripts/format.mjs --write",
     "release:check": "node scripts/release-check.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "^4.14.0"
   }
 }

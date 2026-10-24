@@ -899,7 +899,6 @@ function updateValidationIndicator() {
   refs.validationCount.textContent = String(count);
   refs.validationBtn.classList.toggle("has-issues", count > 0);
   refs.validationBtn.title = label;
-  refs.validationBtn.setAttribute("aria-label", label);
 }
 
 function renderValidationDialog() {

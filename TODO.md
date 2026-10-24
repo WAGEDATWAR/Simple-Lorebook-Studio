@@ -26,7 +26,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 
 ## Next Up
 
-- [ ] [P1] [High] Run an automated accessibility audit and fix all critical issues.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
 - [ ] [P1] [Very High] Replace the character/4 estimate with a real tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
 - [ ] [P1] [High] Add a context simulation view showing likely activation order and injected text.
@@ -129,6 +128,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Low] Verify focus restoration after delete, book switch, and dialog dismissal.
 - [x] [P1] [Medium] Add a proper unsaved-changes strategy for failed localStorage writes.
 - [ ] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
+- [x] [P1] [High] Run an automated accessibility audit and fix all critical issues.
 - [x] [P1] [Medium] Add a command palette for quick actions.
 - [ ] [P2] [Low] Hide field hint text while a field has content, showing it again only when the field is empty or focused.
 - [ ] [P2] [Low] Add hover-based hint popup dialogs on desktop for fields and controls with longer explanations.

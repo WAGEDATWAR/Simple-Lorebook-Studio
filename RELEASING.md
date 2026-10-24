@@ -17,11 +17,13 @@ Lorebook Studio uses a simple pre-1.0 semantic versioning convention.
 2. Update the `app-version` meta tag in `index.html` to match.
 3. Add a `## [<version>]` section to `CHANGELOG.md` and move finished entries out of `Unreleased`.
 4. Run the full verification suite:
+   - `npm ci` (installs the axe-core dev dependency)
    - `npm run check`
    - `npm run lint`
    - `npm run format` (should report clean)
    - `npm test`
    - `npm run test:e2e`
+   - `npm run a11y`
    - `npm run release:check`
 5. Commit the release changes.
 6. Push `main`.
@@ -33,4 +35,5 @@ Lorebook Studio uses a simple pre-1.0 semantic versioning convention.
 - `npm run check` syntax-checks every JavaScript module.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules.
 - `npm run format` reports files that need whitespace normalization; `npm run format:write` applies fixes.
+- `npm run a11y` runs the axe-core accessibility audit over the workspace and every dialog.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.

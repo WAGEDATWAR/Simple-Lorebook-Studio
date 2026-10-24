@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.6.0">
+  <meta name="app-version" content="0.6.1">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -14,6 +14,7 @@
 <body>
   <div class="app">
     <header class="topbar">
+      <h1 class="sr-only">Lorebook Studio</h1>
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -170,7 +171,7 @@
               </details>
               <div class="field">
                 <label for="book-tags-input">Tags <span class="hint">optional</span></label>
-                <div id="book-tags" class="key-chips tag-chips" role="list">
+                <div id="book-tags" class="key-chips tag-chips">
                   <input id="book-tags-input" class="key-chips-input" type="text" placeholder="campaign, v2" autocomplete="off" spellcheck="false">
                 </div>
               </div>
@@ -181,12 +182,12 @@
                   </svg>
                   <span>Overview</span>
                 </button>
-                <button id="validation-btn" class="meta-btn validation-btn" type="button" title="No validation issues" aria-label="No validation issues">
+                <button id="validation-btn" class="meta-btn validation-btn" type="button" title="No validation issues">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M12 3 3.2 20h17.6L12 3Z"/><path d="M12 9v5"/><path d="M12 17.2h.01"/>
                   </svg>
                   <span>Issues</span>
-                  <span id="validation-count" class="validation-count" aria-hidden="true">0</span>
+                  <span id="validation-count" class="validation-count">0</span>
                 </button>
               </div>
             </section>
@@ -331,19 +332,19 @@
                 <div class="field-grid">
                   <div class="field">
                     <label for="entry-keys-input">Trigger keys <span class="hint">Enter or comma to add</span></label>
-                    <div id="entry-keys" class="key-chips" role="list">
+                    <div id="entry-keys" class="key-chips">
                       <input id="entry-keys-input" class="key-chips-input" type="text" placeholder="sword, blade, weapon" autocomplete="off" spellcheck="false">
                     </div>
                   </div>
                   <div class="field">
                     <label for="entry-secondary-keys-input">Secondary keys <span class="hint">optional</span></label>
-                    <div id="entry-secondary-keys" class="key-chips" role="list">
+                    <div id="entry-secondary-keys" class="key-chips">
                       <input id="entry-secondary-keys-input" class="key-chips-input" type="text" placeholder="inner voice, thought" autocomplete="off" spellcheck="false">
                     </div>
                   </div>
                   <div class="field field-wide">
                     <label for="entry-tags-input">Tags <span class="hint">optional</span></label>
-                    <div id="entry-tags" class="key-chips tag-chips" role="list">
+                    <div id="entry-tags" class="key-chips tag-chips">
                       <input id="entry-tags-input" class="key-chips-input" type="text" placeholder="npc, location, faction" autocomplete="off" spellcheck="false">
                     </div>
                   </div>

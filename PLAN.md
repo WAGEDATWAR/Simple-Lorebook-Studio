@@ -69,6 +69,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Entry filters for enabled, disabled, always-on, and missing keys. The enabled/disabled filters are mutually exclusive and the selection persists locally. Entry tags add a dynamic tag-filter row.
 - When a search or filter hides the active entry, it stays visible as a pinned "Current" card so results remain stable.
 - A command palette (`Ctrl/Cmd+K`) with fuzzy-free text filtering over entry, book, sort, filter, layout, file, and help actions.
+- A repeatable axe-core accessibility audit (`npm run a11y`) over the workspace and every dialog, with zero critical, serious, or moderate violations.
 - An About panel with the app version, supported import/export formats, local storage usage, and a local-first privacy statement, plus a getting-started guide dialog.
 - Entry-list keyboard navigation with `ArrowUp`/`ArrowDown`/`Home`/`End`, `Enter`/`Space` activation, and `Ctrl`/`Shift` selection modifiers.
 - Focus and scroll preservation across sidebar re-renders, plus focus restoration after entry/book deletion and dialog dismissal.
@@ -470,6 +471,7 @@ Current checks:
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
 - `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 83 tests.
 - `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
 - The static server returns correct module content types.
@@ -483,7 +485,7 @@ Planned checks:
 
 - Broader Chub fixture coverage against additional real exported files.
 - Browser end-to-end coverage for export downloads and keyboard shortcuts to complete the committed suite.
-- Automated accessibility scan plus manual screen-reader pass.
+- Manual screen-reader pass on top of the automated axe-core audit.
 - Performance target: smooth interaction with 1,000 entries and 500,000 characters in a project.
 
 ## 11. Technical Decisions and Risks
@@ -498,6 +500,7 @@ Planned checks:
 - Pre-import backups use the same native project container and remain restorable from the export dialog.
 - Revision history stores up to 12 local project snapshots within a total size budget, with deduplication by content signature. Restoring snapshots the current state first.
 - IndexedDB is the primary persistence layer; localStorage remains a fallback and migration source. Storage access is async, with a serialized write queue to avoid index races.
+- The app ships with no runtime dependencies. `axe-core` is the only dev dependency, used by the committed accessibility audit.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks

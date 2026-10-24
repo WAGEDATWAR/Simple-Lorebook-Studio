@@ -4,6 +4,16 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-22
+
+### Added
+
+- A repeatable axe-core accessibility audit (`npm run a11y`) covering the workspace and every dialog, wired into CI.
+
+### Fixed
+
+- Accessibility: removed invalid `list` roles from key and tag chip containers, gave the page a level-one heading, and corrected the Issues button accessible name.
+
 ## [0.6.0] - 2026-10-22
 
 ### Added

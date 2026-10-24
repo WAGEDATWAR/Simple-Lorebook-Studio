@@ -81,7 +81,6 @@ export function createKeyChips({ container, input, onChange, label = "key", rege
     const remove = document.createElement("button");
 
     chip.className = "key-chip";
-    chip.setAttribute("role", "listitem");
 
     if (regex && isRegexKey(key)) {
       const parsed = parseRegexKey(key);
