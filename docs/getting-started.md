@@ -23,6 +23,11 @@ Lorebook Studio is a local-first editor for lorebooks used in LLM roleplay front
 - **Export** produces a full project backup or a single active lorebook as native JSON, SillyTavern World Info v2, Chub, or a standalone character book.
 - Unknown fields from imported files are preserved and restored when you export back to that format.
 
+## Tokens
+
+- Open **About** -> **Token settings** to pick the tokenizer that matches your model (cl100k_base for GPT-3.5 Turbo/GPT-4, o200k_base for GPT-4o/GPT-4.1/o1/o3) and the context window used for budget warnings.
+- The overview reports the active tokenizer, context-window usage, and budget usage; the simulation reports injected tokens as a percentage of the context window.
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |

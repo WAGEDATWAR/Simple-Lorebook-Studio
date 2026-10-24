@@ -4,6 +4,12 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-10-22
+
+### Added
+
+- Configurable tokenizer presets (cl100k_base and o200k_base) with a token settings dialog, plus context window presets used for context-window usage in the overview and simulation.
+
 ## [0.7.3] - 2026-10-22
 
 ### Added

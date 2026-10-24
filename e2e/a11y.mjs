@@ -51,6 +51,13 @@ const states = [
     await page.click("#about-btn");
     await page.waitFor('document.querySelector("#about-dialog")?.open');
   } },
+  { name: "token settings dialog", setup: async (page) => {
+    await page.click("#about-btn");
+    await page.waitFor('document.querySelector("#about-dialog")?.open');
+    await page.click("#about-token-btn");
+    await page.waitFor('document.querySelector("#token-settings-dialog")?.open');
+    await page.waitFor('document.querySelector("#tokenizer-preset")?.options.length === 2');
+  } },
   { name: "global search dialog", setup: async (page) => {
     await page.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))');
     await page.waitFor('document.querySelector("#global-search-dialog")?.open');

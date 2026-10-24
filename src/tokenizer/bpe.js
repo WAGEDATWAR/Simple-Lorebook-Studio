@@ -1,6 +1,9 @@
 const LETTER = "\\p{L}";
 const NUMBER = "\\p{N}";
+const UPPER = "\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}";
+const LOWER = "\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}";
 const CONTRACTION = "'(?:[sS\u2019]|[dD]|[mM]|[tT]|[lL][lL]|[vV][eE]|[rR][eE])";
+const OPTIONAL_CONTRACTION = `(?:${CONTRACTION})?`;
 
 // cl100k_base pre-tokenization pattern (tiktoken / gpt-tokenizer compatible).
 export const CL100K_PATTERN = [
@@ -12,6 +15,17 @@ export const CL100K_PATTERN = [
   `\\p{White_Space}*[\\r\\n]`,
   `\\p{White_Space}+(?!\\P{White_Space})`,
   `\\p{White_Space}`
+].join("|");
+
+// o200k_base pre-tokenization pattern (tiktoken / gpt-tokenizer compatible).
+export const O200K_PATTERN = [
+  `[^\\r\\n${LETTER}${NUMBER}]?[${UPPER}]*[${LOWER}]+${OPTIONAL_CONTRACTION}`,
+  `[^\\r\\n${LETTER}${NUMBER}]?[${UPPER}]+[${LOWER}]*${OPTIONAL_CONTRACTION}`,
+  `[${NUMBER}]{1,3}`,
+  ` ?[^\\p{White_Space}${LETTER}${NUMBER}]+[\\r\\n\\/]*`,
+  `\\p{White_Space}*[\\r\\n]+`,
+  `\\p{White_Space}+(?!\\P{White_Space})`,
+  `\\p{White_Space}+`
 ].join("|");
 
 const textEncoder = new TextEncoder();
@@ -53,8 +67,8 @@ function byteString(bytes) {
   return result;
 }
 
-export function createEncoder(ranks) {
-  const regex = new RegExp(CL100K_PATTERN, "gu");
+export function createEncoder(ranks, pattern = CL100K_PATTERN) {
+  const regex = new RegExp(pattern, "gu");
   const cache = new Map();
 
   function countPiece(piece) {

@@ -44,7 +44,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Trigger and secondary keys are edited as chips: add with Enter/comma, paste comma- or newline-separated lists, remove with the chip button or Backspace, and double-click a chip to edit it.
 - Slash-delimited keys are treated as regular expressions, highlighted in the editor, and validated with a plain-text fallback when the pattern is invalid.
 - Bulk insertion-order controls set or shift the order of selected entries.
-- Live character, word, and token counts. Token counts use a real cl100k_base BPE tokenizer running in a web worker, with the `chars / 4` estimate shown (prefixed with `~`) until the worker is ready or when it is unavailable.
+- Live character, word, and token counts. Token counts use a real BPE tokenizer running in a web worker, with the `chars / 4` estimate shown (prefixed with `~`) until the worker is ready or when it is unavailable.
+- Tokenizer presets for cl100k_base (GPT-3.5 Turbo, GPT-4) and o200k_base (GPT-4o, GPT-4.1, o1, o3), selectable in token settings and persisted locally.
+- Context window presets (4K-200K) used for context-window usage in the overview and simulation.
 - A per-book token budget with an over-budget warning in the lorebook-information section and the overview.
 - A context simulation view that evaluates a pasted scene against trigger keys, secondary keys, regex keys, case sensitivity, and whole-word matching, then shows activation order, matched keys, per-entry tokens, the combined injected text, and the reasons other entries stayed inactive.
 - A book overview with entry counts, total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, the longest entry, and budget usage.
@@ -119,6 +121,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/commands.js` | Pure command-palette filtering |
 | `src/search.js` | Shared entry query analysis and cross-lorebook search |
+| `src/settings.js` | Tokenizer and context window presets and normalization |
 | `src/simulation.js` | Pure context activation simulation and key matching |
 | `src/migrations.js` | Append-only project schema migrations |
 | `src/integrity.js` | Project integrity checks and repair |
@@ -144,6 +147,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/commands.test.js` | Command-palette filtering tests |
 | `test/simulation.test.js` | Context activation and key-matching tests |
 | `test/search.test.js` | Entry query analysis and cross-lorebook search tests |
+| `test/settings.test.js` | Tokenizer and context window preset tests |
 | `test/migrations.test.js` | Schema migration and version handling tests |
 | `test/integrity.test.js` | Project integrity check and repair tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
@@ -400,7 +404,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - Book descriptions live in a collapsible lorebook-information section with a one-line preview.
 - The lorebook-information section also exposes the overview and validation controls, keeping entry count and sorting separate.
 - The validation control summarizes issues; its dialog groups issues by type, lets the category counts filter the list, and makes each issue jump to the affected entry after clearing search.
-- The About panel links to a data-integrity dialog that reports project and snapshot problems and repairs them on request.
+- The About panel links to a data-integrity dialog that reports project and snapshot problems and repairs them on request, and to a token settings dialog for the tokenizer and context window presets.
+- The overview reports the active tokenizer, context-window usage, and budget usage; the simulation reports injected tokens as a percentage of the context window.
 - The overview control summarizes entry counts, token counts, key coverage, budget usage, and the longest entry for the active book.
 - The simulation control previews activation for pasted context: activated entries in order with matched keys and tokens, the combined injected text, and the inactive entries with reasons. Activating an entry from the results jumps to it.
 - The library sidebar auto-fits its control rows, wraps at narrower widths, resizes by drag or keyboard, resets to auto-fit on double-click, and collapses to a 50 px rail.
@@ -492,8 +497,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, project integrity, cross-lorebook search, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 112 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, global search, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, validation issue-type filtering, data-integrity checks, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, project integrity, cross-lorebook search, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, cl100k and o200k tokenizer accuracy against `gpt-tokenizer`, token settings presets, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 116 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, global search, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, tokenizer and context-window presets, context simulation, validation issue-type filtering, data-integrity checks, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
@@ -525,7 +530,7 @@ Planned checks:
 - IndexedDB is the primary persistence layer; localStorage remains a fallback and migration source. Storage access is async, with a serialized write queue to avoid index races.
 - Schema changes ship as append-only migrations in `src/migrations.js`; `SCHEMA_VERSION` is bumped and older stored or imported projects are upgraded on load. Released migrations are never edited.
 - The app ships with no runtime dependencies. Dev dependencies are `axe-core` (accessibility audit) and `gpt-tokenizer` (tokenizer accuracy tests).
-- Token counts use a vendored cl100k_base BPE encoder (`src/tokenizer/bpe.js`) with the ranks loaded once in a web worker. The encoder is validated against `gpt-tokenizer` in tests, and the `chars / 4` estimate remains the fallback before the worker is ready or when workers are unavailable.
+- Token counts use a vendored BPE encoder (`src/tokenizer/bpe.js`) with cl100k_base and o200k_base ranks loaded on demand in a web worker. Both encoders are validated against `gpt-tokenizer` in tests, and the `chars / 4` estimate remains the fallback before the worker is ready or when workers are unavailable.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks

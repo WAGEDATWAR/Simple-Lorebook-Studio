@@ -1,8 +1,9 @@
 # Tokenizer data
 
-`cl100k_base.tiktoken` is the cl100k_base byte-pair-encoding vocabulary used by OpenAI's
-`tiktoken` (MIT License, https://github.com/openai/tiktoken), redistributed here via the
-`gpt-tokenizer` package (MIT License, https://github.com/niieani/gpt-tokenizer).
+`cl100k_base.tiktoken` and `o200k_base.tiktoken` are the cl100k_base and o200k_base
+byte-pair-encoding vocabularies used by OpenAI's `tiktoken` (MIT License,
+https://github.com/openai/tiktoken), redistributed here via the `gpt-tokenizer` package
+(MIT License, https://github.com/niieani/gpt-tokenizer).
 
 Each line is `<base64 token bytes> <rank>`.
 

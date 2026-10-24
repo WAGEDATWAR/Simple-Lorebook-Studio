@@ -15,6 +15,7 @@ export function createTokenizer({ onUpdate } = {}) {
   let ready = false;
   let flushTimer = 0;
   let nextId = 1;
+  let encoding = "cl100k";
 
   function start() {
     if (worker || !available) {
@@ -31,14 +32,18 @@ export function createTokenizer({ onUpdate } = {}) {
 
     worker.addEventListener("message", (event) => {
       const data = event.data ?? {};
-      const texts = inflight.get(data.id);
+      const job = inflight.get(data.id);
       inflight.delete(data.id);
 
-      if (data.error || !texts || !Array.isArray(data.counts)) {
+      if (data.error || !job || !Array.isArray(data.counts)) {
         return;
       }
 
-      texts.forEach((text, index) => {
+      if (job.encoding !== encoding) {
+        return;
+      }
+
+      job.texts.forEach((text, index) => {
         if (cache.size < CACHE_LIMIT) {
           cache.set(text, data.counts[index]);
         }
@@ -63,8 +68,8 @@ export function createTokenizer({ onUpdate } = {}) {
     pending.clear();
     const id = nextId;
     nextId += 1;
-    inflight.set(id, texts);
-    worker.postMessage({ id, texts });
+    inflight.set(id, { texts, encoding });
+    worker.postMessage({ id, encoding, texts });
   }
 
   function schedule() {
@@ -82,6 +87,21 @@ export function createTokenizer({ onUpdate } = {}) {
     start,
     isReady: () => ready,
     isAvailable: () => available,
+    getEncoding: () => encoding,
+    setEncoding(next) {
+      const value = next === "o200k" ? "o200k" : "cl100k";
+
+      if (value === encoding) {
+        return;
+      }
+
+      encoding = value;
+      cache.clear();
+      pending.clear();
+      inflight.clear();
+      ready = false;
+      onUpdate?.();
+    },
     count(text) {
       return cache.has(text) ? cache.get(text) : null;
     },

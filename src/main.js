@@ -68,6 +68,14 @@ import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { createSampleProject } from "./sample.js";
 import { createProject, normalizeTagList } from "./schema.js";
 import { searchProject } from "./search.js";
+import {
+  CONTEXT_WINDOW_PRESETS,
+  DEFAULT_TOKEN_SETTINGS,
+  TOKENIZER_PRESETS,
+  getContextWindowPreset,
+  getTokenizerPreset,
+  normalizeTokenSettings
+} from "./settings.js";
 import { SIMULATION_REASONS, simulateContext } from "./simulation.js";
 import { createTokenizer, estimateTokens } from "./tokenizer/client.js";
 import { buildBookOverview } from "./overview.js";
@@ -145,7 +153,15 @@ const refs = {
   aboutExportFormats: document.querySelector("#about-export-formats"),
   aboutStorage: document.querySelector("#about-storage"),
   aboutGuideBtn: document.querySelector("#about-guide-btn"),
+  aboutTokenBtn: document.querySelector("#about-token-btn"),
   aboutIntegrityBtn: document.querySelector("#about-integrity-btn"),
+  tokenSettingsDialog: document.querySelector("#token-settings-dialog"),
+  tokenizerPreset: document.querySelector("#tokenizer-preset"),
+  tokenizerPresetHint: document.querySelector("#tokenizer-preset-hint"),
+  contextWindowPreset: document.querySelector("#context-window-preset"),
+  tokenSettingsCloseBtn: document.querySelector("#token-settings-close"),
+  overviewContext: document.querySelector("#overview-context"),
+  overviewTokenizer: document.querySelector("#overview-tokenizer"),
   aboutCloseBtn: document.querySelector("#about-close"),
   integrityDialog: document.querySelector("#integrity-dialog"),
   integritySummary: document.querySelector("#integrity-summary"),
@@ -303,6 +319,7 @@ let unsavedChanges = false;
 let projectFileHandle = null;
 let simulationTimer = 0;
 let validationFilter = null;
+let tokenSettings = { ...DEFAULT_TOKEN_SETTINGS };
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
@@ -312,6 +329,7 @@ const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const FILTER_STATE_KEY = "lorebook-studio:filters:v1";
 const TAG_FILTER_STATE_KEY = "lorebook-studio:tag-filters:v1";
 const ONBOARDED_KEY = "lorebook-studio:onboarded:v1";
+const TOKEN_SETTINGS_KEY = "lorebook-studio:token-settings:v1";
 const LAST_BACKUP_KEY = "lorebook-studio:last-backup:v1";
 const BACKUP_SNOOZE_KEY = "lorebook-studio:backup-reminder-snooze:v1";
 const BACKUP_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -387,6 +405,23 @@ function readTagFilters() {
 function persistTagFilters(tags) {
   try {
     localStorage.setItem(TAG_FILTER_STATE_KEY, JSON.stringify(tags));
+  } catch {
+    return;
+  }
+}
+
+function readTokenSettings() {
+  try {
+    const raw = localStorage.getItem(TOKEN_SETTINGS_KEY);
+    return raw ? normalizeTokenSettings(JSON.parse(raw)) : { ...DEFAULT_TOKEN_SETTINGS };
+  } catch {
+    return { ...DEFAULT_TOKEN_SETTINGS };
+  }
+}
+
+function persistTokenSettings() {
+  try {
+    localStorage.setItem(TOKEN_SETTINGS_KEY, JSON.stringify(tokenSettings));
   } catch {
     return;
   }
@@ -845,6 +880,70 @@ function handleGlobalSearchJump(bookId, entryId) {
   scheduleSave();
 }
 
+function applyTokenSettings() {
+  tokenizer.setEncoding(getTokenizerPreset(tokenSettings.tokenizer).encoding);
+}
+
+function renderTokenSettingsDialog() {
+  const tokenizerOptions = TOKENIZER_PRESETS.map((preset) => {
+    const option = document.createElement("option");
+    option.value = preset.id;
+    option.textContent = preset.label;
+    return option;
+  });
+
+  refs.tokenizerPreset.replaceChildren(...tokenizerOptions);
+  refs.tokenizerPreset.value = tokenSettings.tokenizer;
+  refs.tokenizerPresetHint.textContent = getTokenizerPreset(tokenSettings.tokenizer).detail;
+
+  const windowOptions = CONTEXT_WINDOW_PRESETS.map((preset) => {
+    const option = document.createElement("option");
+    option.value = String(preset.value);
+    option.textContent = `${preset.label} tokens`;
+    return option;
+  });
+
+  refs.contextWindowPreset.replaceChildren(...windowOptions);
+  refs.contextWindowPreset.value = String(tokenSettings.contextWindow);
+}
+
+function openTokenSettingsDialog() {
+  renderTokenSettingsDialog();
+
+  if (!refs.tokenSettingsDialog.open) {
+    refs.tokenSettingsDialog.showModal();
+  }
+}
+
+function handleTokenizerChange() {
+  tokenSettings.tokenizer = refs.tokenizerPreset.value;
+  persistTokenSettings();
+  applyTokenSettings();
+  renderTokenSettingsDialog();
+  renderAll();
+
+  if (refs.overviewDialog.open) {
+    renderOverviewDialog();
+  }
+
+  if (refs.simulationDialog.open) {
+    renderSimulationResults();
+  }
+}
+
+function handleContextWindowChange() {
+  tokenSettings.contextWindow = Number(refs.contextWindowPreset.value);
+  persistTokenSettings();
+
+  if (refs.overviewDialog.open) {
+    renderOverviewDialog();
+  }
+
+  if (refs.simulationDialog.open) {
+    renderSimulationResults();
+  }
+}
+
 function openGuideDialog() {
   if (!refs.guideDialog.open) {
     refs.guideDialog.showModal();
@@ -963,6 +1062,7 @@ function buildCommands() {
     { title: "Show welcome", keywords: ["onboarding", "start"], run: openOnboardingDialog },
     { title: "Start empty lorebook", keywords: ["new", "blank", "reset"], run: startEmptyProject },
     { title: "Search all lorebooks", hint: "Ctrl+Shift+F", keywords: ["global", "find", "everywhere"], run: openGlobalSearchDialog },
+    { title: "Token settings", keywords: ["tokenizer", "model", "context window"], run: openTokenSettingsDialog },
     { title: "Check data integrity", keywords: ["repair", "diagnostics", "snapshots"], run: () => openIntegrityDialog() },
     { title: "About Lorebook Studio", keywords: ["version", "privacy", "info"], run: () => openAboutDialog() }
   ];
@@ -1348,6 +1448,14 @@ function renderOverviewDialog() {
     refs.overviewBudget.classList.remove("is-over");
   }
 
+  const window = tokenSettings.contextWindow;
+  const used = overview.enabledTotals.tokens;
+  const windowPercent = window > 0 ? Math.round((used / window) * 100) : 0;
+
+  refs.overviewContext.textContent = `${prefix}${numberFormatter.format(used)} of ${numberFormatter.format(window)} (${windowPercent}%)`;
+  refs.overviewContext.classList.toggle("is-over", used > window);
+  refs.overviewTokenizer.textContent = getTokenizerPreset(tokenSettings.tokenizer).detail;
+
   refs.overviewLongest.replaceChildren();
 
   if (overview.longestEntry) {
@@ -1414,7 +1522,10 @@ function renderSimulationResults() {
   const totalTokens = Number.isFinite(measuredTotal) ? measuredTotal : estimateTokens(result.injectedText);
   const prefix = Number.isFinite(measuredTotal) ? "" : "~";
 
-  refs.simulationSummary.textContent = `${result.activated.length} of ${enabledCount} enabled ${enabledCount === 1 ? "entry" : "entries"} activate \u00b7 ${prefix}${numberFormatter.format(totalTokens)} tokens injected`;
+  const window = tokenSettings.contextWindow;
+  const windowPercent = window > 0 ? Math.round((totalTokens / window) * 100) : 0;
+
+  refs.simulationSummary.textContent = `${result.activated.length} of ${enabledCount} enabled ${enabledCount === 1 ? "entry" : "entries"} activate \u00b7 ${prefix}${numberFormatter.format(totalTokens)} tokens injected (${windowPercent}% of ${numberFormatter.format(window)})`;
   refs.simulationResults.replaceChildren();
 
   if (!entries.length) {
@@ -3101,9 +3212,27 @@ refs.aboutGuideBtn.addEventListener("click", () => {
   openGuideDialog();
 });
 
+refs.aboutTokenBtn.addEventListener("click", () => {
+  refs.aboutDialog.close();
+  openTokenSettingsDialog();
+});
+
 refs.aboutIntegrityBtn.addEventListener("click", () => {
   refs.aboutDialog.close();
   openIntegrityDialog();
+});
+
+refs.tokenizerPreset.addEventListener("change", handleTokenizerChange);
+refs.contextWindowPreset.addEventListener("change", handleContextWindowChange);
+
+refs.tokenSettingsCloseBtn.addEventListener("click", () => {
+  refs.tokenSettingsDialog.close();
+});
+
+refs.tokenSettingsDialog.addEventListener("click", (event) => {
+  if (event.target === refs.tokenSettingsDialog) {
+    refs.tokenSettingsDialog.close();
+  }
 });
 
 refs.integrityRepairBtn.addEventListener("click", () => {
@@ -3419,6 +3548,9 @@ const initialTagFilters = readTagFilters();
 if (initialTagFilters) {
   setTagFilters(initialTagFilters);
 }
+
+tokenSettings = readTokenSettings();
+applyTokenSettings();
 
 tokenizer.start();
 renderAll();

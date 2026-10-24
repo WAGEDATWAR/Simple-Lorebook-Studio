@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.7.3">
+  <meta name="app-version" content="0.7.4">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -585,6 +585,14 @@
           <dt>Token budget</dt>
           <dd id="overview-budget">Off</dd>
         </div>
+        <div>
+          <dt>Context window</dt>
+          <dd id="overview-context">—</dd>
+        </div>
+        <div>
+          <dt>Tokenizer</dt>
+          <dd id="overview-tokenizer">—</dd>
+        </div>
       </dl>
       <p id="overview-longest" class="overview-longest"></p>
       <div class="dialog-actions">
@@ -698,6 +706,29 @@
     </div>
   </dialog>
 
+  <dialog id="token-settings-dialog" class="dialog token-settings-dialog" aria-labelledby="token-settings-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Tokens</p>
+        <h2 id="token-settings-title">Tokenizer and context window</h2>
+        <p class="dialog-copy">Pick the tokenizer that matches your target model and the context window used for budget warnings.</p>
+      </div>
+      <div class="field">
+        <label for="tokenizer-preset">Tokenizer</label>
+        <select id="tokenizer-preset"></select>
+        <span id="tokenizer-preset-hint" class="hint"></span>
+      </div>
+      <div class="field">
+        <label for="context-window-preset">Context window</label>
+        <select id="context-window-preset"></select>
+        <span class="hint">Used for context-window usage in the overview and simulation.</span>
+      </div>
+      <div class="dialog-actions">
+        <button id="token-settings-close" class="btn btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="global-search-dialog" class="dialog global-search-dialog" aria-labelledby="global-search-title">
     <div class="dialog-inner">
       <div class="dialog-heading">
@@ -757,6 +788,7 @@
       </dl>
       <div class="dialog-actions">
         <button id="about-guide-btn" class="btn btn-primary" type="button">Getting started</button>
+        <button id="about-token-btn" class="btn" type="button">Token settings</button>
         <button id="about-integrity-btn" class="btn" type="button">Check data integrity</button>
         <button id="about-close" class="btn" type="button">Close</button>
       </div>

@@ -1,23 +1,30 @@
-import { createEncoder, parseRanks } from "./bpe.js";
+import { CL100K_PATTERN, O200K_PATTERN, createEncoder, parseRanks } from "./bpe.js";
 
-let encoderPromise = null;
+const ENCODINGS = {
+  cl100k: { file: "cl100k_base.tiktoken", pattern: CL100K_PATTERN },
+  o200k: { file: "o200k_base.tiktoken", pattern: O200K_PATTERN }
+};
 
-function loadEncoder() {
-  if (!encoderPromise) {
-    encoderPromise = (async () => {
-      const url = new URL("./data/cl100k_base.tiktoken", import.meta.url);
-      const response = await fetch(url);
+const encoders = new Map();
+
+function loadEncoder(encoding) {
+  const key = ENCODINGS[encoding] ? encoding : "cl100k";
+  const config = ENCODINGS[key];
+
+  if (!encoders.has(key)) {
+    encoders.set(key, (async () => {
+      const response = await fetch(new URL(`./data/${config.file}`, import.meta.url));
 
       if (!response.ok) {
         throw new Error(`Tokenizer data failed to load (${response.status}).`);
       }
 
       const text = await response.text();
-      return createEncoder(parseRanks(text));
-    })();
+      return createEncoder(parseRanks(text), config.pattern);
+    })());
   }
 
-  return encoderPromise;
+  return encoders.get(key);
 }
 
 self.addEventListener("message", async (event) => {
@@ -28,7 +35,7 @@ self.addEventListener("message", async (event) => {
   }
 
   try {
-    const encoder = await loadEncoder();
+    const encoder = await loadEncoder(data.encoding);
     const counts = data.texts.map((text) => encoder.count(text));
     self.postMessage({ id: data.id, counts });
   } catch (error) {

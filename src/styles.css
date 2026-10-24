@@ -1821,8 +1821,17 @@ body.is-resizing-sidebar {
   font-weight: 600;
 }
 
-#overview-budget.is-over {
+#overview-budget.is-over,
+#overview-context.is-over {
   color: var(--warning);
+}
+
+.token-settings-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.token-settings-dialog .field {
+  margin-top: 14px;
 }
 
 .tag-chips .key-chip {

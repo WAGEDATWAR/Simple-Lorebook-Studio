@@ -718,6 +718,42 @@ export const scenarios = [
     }
   },
   {
+    name: "switches tokenizer and context window presets",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate('document.querySelector("#about-btn").click(); true');
+      await page.waitFor('document.querySelector("#about-dialog")?.open');
+      await page.click("#about-token-btn");
+      await page.waitFor('document.querySelector("#token-settings-dialog")?.open');
+      await page.waitFor('document.querySelector("#tokenizer-preset")?.options.length === 2');
+
+      await page.evaluate(`(() => {
+        const select = document.querySelector("#tokenizer-preset");
+        select.value = "o200k";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      })()`);
+      await page.waitFor('document.querySelector("#tokenizer-preset-hint").textContent === "o200k_base"');
+      await page.waitFor('!document.querySelector("#entry-stat-tokens").textContent.startsWith("~")');
+
+      await page.evaluate(`(() => {
+        const select = document.querySelector("#context-window-preset");
+        select.value = "32768";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      })()`);
+      await page.click("#token-settings-close");
+
+      await page.click("#overview-btn");
+      await page.waitFor('document.querySelector("#overview-dialog")?.open');
+      await page.waitFor('document.querySelector("#overview-context").textContent.includes("32,768")');
+      const tokenizer = await page.evaluate('document.querySelector("#overview-tokenizer").textContent');
+      assert.equal(tokenizer, "o200k_base");
+      await page.click("#overview-close");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "searches across all lorebooks",
     async run(page) {
       await resetApp(page);

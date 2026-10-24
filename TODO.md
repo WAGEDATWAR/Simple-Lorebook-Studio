@@ -27,9 +27,9 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 ## Next Up
 
 - [ ] [P1] [High] Add an interactive visual node-based activation graph to the context simulation view.
-- [ ] [P2] [Medium] Add configurable model/tokenizer presets.
-- [ ] [P2] [Medium] Add context window presets for common frontend configurations.
 - [ ] [P2] [Medium] Add bulk operations based on token size.
+- [ ] [P2] [Medium] Cache tokenization results per entry revision.
+- [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
 - [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
 
@@ -40,7 +40,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Low] Expose the stored book description in the interface.
 - [x] [P1] [High] Add a validation panel for empty content, duplicate keys, missing keys on non-constant entries, and order collisions.
 - [x] [P1] [Low] Add issue-type filtering by clicking the issue-type counts in the validation dialog.
-- [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
 - [x] [P1] [Medium] Replace the comma-separated key inputs with editable key chips while keeping paste support.
 - [x] [P1] [Medium] Add multi-select and bulk enable, disable, and delete.
 - [x] [P1] [Low] Add bulk insertion-order changes for selected entries.
@@ -103,7 +102,8 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Very High] Replace the character/4 estimate with a real cl100k tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
 - [x] [P1] [High] Add a context simulation view showing likely activation order and injected text.
 - [x] [P1] [Medium] Add key collision and unreachable-entry detection.
-- [ ] [P2] [Medium] Cache tokenization results per entry revision.
+- [x] [P2] [Medium] Add configurable model/tokenizer presets.
+- [x] [P2] [Medium] Add context window presets for common frontend configurations.
 
 ## Data and Persistence
 
