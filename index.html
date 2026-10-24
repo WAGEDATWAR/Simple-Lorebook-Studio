@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.6.2">
+  <meta name="app-version" content="0.7.0">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -186,6 +186,13 @@
                     <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
                   </svg>
                   <span>Overview</span>
+                </button>
+                <button id="simulation-btn" class="meta-btn simulation-btn" type="button" aria-label="Simulate context" title="Simulate context activation">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/>
+                    <path d="M7.2 7 10.6 16"/><path d="M16.8 7 13.4 16"/><path d="M7.4 6h9.2"/>
+                  </svg>
+                  <span>Simulate</span>
                 </button>
                 <button id="validation-btn" class="meta-btn validation-btn" type="button" title="No validation issues">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -581,6 +588,26 @@
       <p id="overview-longest" class="overview-longest"></p>
       <div class="dialog-actions">
         <button id="overview-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="simulation-dialog" class="dialog simulation-dialog" aria-labelledby="simulation-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Context simulation</p>
+        <h2 id="simulation-title">Preview activation</h2>
+        <p class="dialog-copy">Paste a scene or recent message to see which entries activate, in what order, and what gets injected.</p>
+      </div>
+      <label class="sr-only" for="simulation-input">Context text</label>
+      <textarea id="simulation-input" class="simulation-input" rows="5" placeholder="Paste context here…" spellcheck="false"></textarea>
+      <div class="simulation-toolbar">
+        <button id="simulation-run" class="btn btn-primary" type="button">Simulate</button>
+        <span id="simulation-summary" class="simulation-summary" aria-live="polite"></span>
+      </div>
+      <div id="simulation-results" class="simulation-results"></div>
+      <div class="dialog-actions">
+        <button id="simulation-close" class="btn" type="button">Close</button>
       </div>
     </div>
   </dialog>

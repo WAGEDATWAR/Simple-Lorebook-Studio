@@ -626,6 +626,28 @@ export const scenarios = [
     }
   },
   {
+    name: "simulates context activation",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#simulation-btn");
+      await page.waitFor('document.querySelector("#simulation-dialog")?.open');
+
+      await setValue(page, "#simulation-input", "Mara Voss, the harbormaster, walks the harbor at dusk.");
+      await page.waitFor('document.querySelectorAll(".simulation-item").length === 2');
+
+      const summary = await page.evaluate('document.querySelector("#simulation-summary").textContent');
+      assert.match(summary, /activate/);
+      const output = await page.evaluate('document.querySelector(".simulation-output")?.textContent ?? ""');
+      assert.match(output, /Aurora Vale clings/);
+      const skipped = await page.evaluate('document.querySelector(".simulation-skipped summary")?.textContent ?? ""');
+      assert.match(skipped, /Not activated/);
+
+      await page.evaluate('document.querySelector(".simulation-item-title").click(); true');
+      await page.waitFor('!document.querySelector("#simulation-dialog")?.open');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "opens and runs commands from the command palette",
     async run(page) {
       await resetApp(page);

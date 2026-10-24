@@ -62,6 +62,7 @@ import { diffProjects } from "./diff.js";
 import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { normalizeTagList } from "./schema.js";
+import { SIMULATION_REASONS, simulateContext } from "./simulation.js";
 import { createTokenizer, estimateTokens } from "./tokenizer/client.js";
 import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
@@ -155,6 +156,13 @@ const refs = {
   overviewSharedKeys: document.querySelector("#overview-shared-keys"),
   overviewAverage: document.querySelector("#overview-average"),
   overviewBudget: document.querySelector("#overview-budget"),
+  simulationBtn: document.querySelector("#simulation-btn"),
+  simulationDialog: document.querySelector("#simulation-dialog"),
+  simulationInput: document.querySelector("#simulation-input"),
+  simulationRunBtn: document.querySelector("#simulation-run"),
+  simulationSummary: document.querySelector("#simulation-summary"),
+  simulationResults: document.querySelector("#simulation-results"),
+  simulationCloseBtn: document.querySelector("#simulation-close"),
   overviewLongest: document.querySelector("#overview-longest"),
   overviewCloseBtn: document.querySelector("#overview-close"),
   validationBtn: document.querySelector("#validation-btn"),
@@ -267,6 +275,7 @@ let saveTimer = 0;
 let saveFailed = false;
 let unsavedChanges = false;
 let projectFileHandle = null;
+let simulationTimer = 0;
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
@@ -709,6 +718,7 @@ function buildCommands() {
     { title: "Export…", keywords: ["download", "save", "file"], run: openExportDialog },
     { title: "Export project backup", keywords: ["download", "backup"], run: exportProjectBackup },
     { title: "Overview", keywords: ["stats", "metrics", "tokens"], run: openOverviewDialog },
+    { title: "Context simulation", keywords: ["simulate", "activation", "preview"], run: openSimulationDialog },
     { title: "Issues", keywords: ["validation", "problems", "errors"], run: openValidationDialog },
     { title: "Revision history", keywords: ["snapshots", "restore"], run: () => openHistoryDialog() },
     { title: "Toggle library sidebar", keywords: ["collapse", "layout"], run: () => setSidebarCollapsed(!refs.sidebar.classList.contains("is-collapsed")) },
@@ -944,6 +954,10 @@ function handleTokenUpdate() {
   if (refs.overviewDialog.open) {
     renderOverviewDialog();
   }
+
+  if (refs.simulationDialog.open) {
+    renderSimulationResults();
+  }
 }
 
 function scheduleSave() {
@@ -1092,6 +1106,157 @@ function renderOverviewDialog() {
 function openOverviewDialog() {
   renderOverviewDialog();
   refs.overviewDialog.showModal();
+}
+
+function createSimulationItem(item) {
+  const listItem = document.createElement("li");
+  const order = document.createElement("span");
+  const main = document.createElement("div");
+  const title = document.createElement("button");
+  const meta = document.createElement("span");
+  const measured = tokenizer.count(item.entry.content);
+  const tokens = Number.isFinite(measured) ? measured : estimateTokens(item.entry.content);
+  const prefix = tokenizer.isReady() ? "" : "~";
+  const matchLabel = item.reason === "alwaysOn"
+    ? "Always on"
+    : item.matchedKeys.length
+      ? `Keys: ${item.matchedKeys.join(", ")}`
+      : "Matched";
+
+  listItem.className = "simulation-item";
+  listItem.dataset.entryId = item.entry.id;
+  order.className = "simulation-order";
+  order.textContent = String(item.entry.order);
+  main.className = "simulation-item-main";
+  title.type = "button";
+  title.className = "simulation-item-title";
+  title.dataset.entryId = item.entry.id;
+  title.textContent = item.entry.title.trim() || "Untitled entry";
+  meta.className = "simulation-item-meta";
+  meta.textContent = `${matchLabel} \u00b7 ${prefix}${numberFormatter.format(tokens)} tokens`;
+  main.append(title, meta);
+  listItem.append(order, main);
+
+  return listItem;
+}
+
+function renderSimulationResults() {
+  const book = getActiveBook();
+  const entries = book?.entries ?? [];
+  const enabledCount = entries.filter((entry) => entry.enabled).length;
+  const result = simulateContext(book, refs.simulationInput.value);
+  const ready = tokenizer.isReady();
+  const prefix = ready ? "" : "~";
+
+  for (const item of result.activated) {
+    tokenizer.request(item.entry.content);
+  }
+
+  tokenizer.request(result.injectedText);
+
+  const measuredTotal = tokenizer.count(result.injectedText);
+  const totalTokens = Number.isFinite(measuredTotal) ? measuredTotal : estimateTokens(result.injectedText);
+
+  refs.simulationSummary.textContent = `${result.activated.length} of ${enabledCount} enabled ${enabledCount === 1 ? "entry" : "entries"} activate \u00b7 ${prefix}${numberFormatter.format(totalTokens)} tokens injected`;
+  refs.simulationResults.replaceChildren();
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "simulation-empty";
+    empty.textContent = "This lorebook has no entries to simulate.";
+    refs.simulationResults.append(empty);
+    return;
+  }
+
+  if (!result.context.trim()) {
+    const hint = document.createElement("p");
+    hint.className = "simulation-empty";
+    hint.textContent = "Add context above to simulate activation.";
+    refs.simulationResults.append(hint);
+    return;
+  }
+
+  const activatedSection = document.createElement("section");
+  const activatedHeading = document.createElement("h3");
+  activatedSection.className = "simulation-section";
+  activatedHeading.textContent = `Activation order (${result.activated.length})`;
+  activatedSection.append(activatedHeading);
+
+  if (result.activated.length) {
+    const list = document.createElement("ol");
+    list.className = "simulation-list";
+
+    for (const item of result.activated) {
+      list.append(createSimulationItem(item));
+    }
+
+    activatedSection.append(list);
+  } else {
+    const none = document.createElement("p");
+    none.className = "simulation-empty";
+    none.textContent = "No entries activate with this context.";
+    activatedSection.append(none);
+  }
+
+  refs.simulationResults.append(activatedSection);
+
+  if (result.injectedText) {
+    const section = document.createElement("section");
+    const heading = document.createElement("h3");
+    const output = document.createElement("pre");
+    section.className = "simulation-section";
+    heading.textContent = "Injected text";
+    output.className = "simulation-output";
+    output.textContent = result.injectedText;
+    section.append(heading, output);
+    refs.simulationResults.append(section);
+  }
+
+  if (result.skipped.length) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    const list = document.createElement("ul");
+    details.className = "simulation-skipped";
+    summary.textContent = `Not activated (${result.skipped.length})`;
+    list.className = "simulation-skipped-list";
+
+    for (const item of result.skipped) {
+      const listItem = document.createElement("li");
+      const button = document.createElement("button");
+      const reason = document.createElement("span");
+      button.type = "button";
+      button.className = "simulation-skip-entry";
+      button.dataset.entryId = item.entry.id;
+      button.textContent = item.entry.title.trim() || "Untitled entry";
+      reason.className = "simulation-skip-reason";
+      reason.textContent = SIMULATION_REASONS[item.reason] ?? item.reason;
+      listItem.append(button, reason);
+      list.append(listItem);
+    }
+
+    details.append(summary, list);
+    refs.simulationResults.append(details);
+  }
+}
+
+function openSimulationDialog() {
+  renderSimulationResults();
+
+  if (!refs.simulationDialog.open) {
+    refs.simulationDialog.showModal();
+  }
+
+  refs.simulationInput.focus();
+}
+
+function handleSimulationJump(entryId) {
+  refs.simulationDialog.close();
+  clearSearch();
+  setActiveEntry(entryId);
+  renderAll();
+  scrollEntryCardIntoView(entryId);
+  focusEntryCard(entryId);
+  scheduleSave();
 }
 
 function jumpToValidationEntry(entryId) {
@@ -2710,6 +2875,33 @@ refs.overviewBtn.addEventListener("click", openOverviewDialog);
 
 refs.overviewCloseBtn.addEventListener("click", () => {
   refs.overviewDialog.close();
+});
+
+refs.simulationBtn.addEventListener("click", openSimulationDialog);
+
+refs.simulationRunBtn.addEventListener("click", renderSimulationResults);
+
+refs.simulationInput.addEventListener("input", () => {
+  window.clearTimeout(simulationTimer);
+  simulationTimer = window.setTimeout(renderSimulationResults, 180);
+});
+
+refs.simulationResults.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-entry-id]");
+
+  if (target) {
+    handleSimulationJump(target.dataset.entryId);
+  }
+});
+
+refs.simulationCloseBtn.addEventListener("click", () => {
+  refs.simulationDialog.close();
+});
+
+refs.simulationDialog.addEventListener("click", (event) => {
+  if (event.target === refs.simulationDialog) {
+    refs.simulationDialog.close();
+  }
 });
 
 refs.overviewDialog.addEventListener("click", (event) => {

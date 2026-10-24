@@ -26,8 +26,12 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 
 ## Next Up
 
+- [ ] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
+- [ ] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
+- [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
+- [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
+- [ ] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
-- [ ] [P1] [High] Add a context simulation view showing likely activation order and injected text.
 
 ## Editor and Authoring
 
@@ -50,8 +54,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Medium] Support markdown preview for content if the target frontends interpret it consistently.
 - [ ] [P2] [Low] Add per-entry color or tag labels for visual grouping.
 - [ ] [P2] [Medium] Add a "peek" preview showing the text as it would be injected.
-- [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
-- [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
 - [ ] [P1] [Low] Add issue-type filtering by clicking the issue-type counts in the validation dialog.
 - [ ] [P2] [Low] Add bulk tag assignment (add/remove tags) for selected entries.
 - [ ] [P2] [Medium] Suggest trigger keys from the title and content, and offer one-click add.
@@ -91,14 +93,15 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P2] [Medium] Add a book-level overview with entry count, token totals, and key coverage.
 - [ ] [P2] [Low] Add pinned or recent entries.
 - [x] [P2] [Medium] Add overlapping key reports and key coverage summaries.
-- [ ] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
 - [ ] [P2] [Medium] Add a regex search mode for the entry list, complementing regex keys.
 
 ## Context and Token Tools
 
 - [x] [P1] [Medium] Show token counts per entry, per enabled set, and per book.
 - [x] [P1] [Very High] Replace the character/4 estimate with a real cl100k tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
+- [x] [P1] [High] Add a context simulation view showing likely activation order and injected text.
 - [x] [P1] [Medium] Add key collision and unreachable-entry detection.
+- [ ] [P1] [High] Add an interactive visual node-based activation graph to the context simulation view.
 - [ ] [P2] [Medium] Add configurable model/tokenizer presets.
 - [ ] [P2] [Medium] Add context window presets for common frontend configurations.
 - [ ] [P2] [Medium] Add bulk operations based on token size.
@@ -117,7 +120,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Very High] Add cloud sync only if it can remain opt-in, private, and simple.
 - [x] [P2] [Low] Add storage usage reporting.
 - [ ] [P2] [High] Add encrypted local projects if sensitive content becomes a requirement.
-- [ ] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
 - [ ] [P1] [Medium] Add a project data-integrity check and repair tool for corrupt or partially migrated local data.
 - [ ] [P2] [Medium] Show a "what changed since your last session" summary on load.
 
@@ -127,7 +129,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P1] [Medium] Add a mobile library drawer instead of the fixed stacked sidebar if authoring on phones becomes common.
 - [x] [P1] [Low] Verify focus restoration after delete, book switch, and dialog dismissal.
 - [x] [P1] [Medium] Add a proper unsaved-changes strategy for failed localStorage writes.
-- [ ] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
 - [x] [P1] [High] Run an automated accessibility audit and fix all critical issues.
 - [x] [P1] [Medium] Add a command palette for quick actions.
 - [ ] [P2] [Low] Hide field hint text while a field has content, showing it again only when the field is empty or focused.

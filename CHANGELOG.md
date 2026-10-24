@@ -4,6 +4,12 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-22
+
+### Added
+
+- A context simulation view that previews which entries activate for pasted context, in insertion order, with matched keys, per-entry tokens, the combined injected text, and the reasons inactive entries stayed inactive.
+
 ## [0.6.2] - 2026-10-22
 
 ### Added
