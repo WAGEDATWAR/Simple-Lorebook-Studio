@@ -1,7 +1,7 @@
 import { clamp, createId } from "./utils.js";
 
 export const APP_ID = "lorebook-studio";
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const POSITIONS = [
   { value: "before_char", label: "Before character" },

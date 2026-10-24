@@ -38,6 +38,18 @@ function restore(snapshotValue) {
   ensureSelections();
 }
 
+function clearSampleMarker() {
+  if (!state) {
+    return;
+  }
+
+  for (const book of state.books) {
+    if (book.extensions && book.extensions.sample) {
+      delete book.extensions.sample;
+    }
+  }
+}
+
 function captureHistory(key = "", coalesce = true) {
   if (!state) {
     return;
@@ -48,6 +60,7 @@ function captureHistory(key = "", coalesce = true) {
   if (coalesce && key && key === lastHistoryKey && now - lastHistoryAt < HISTORY_GROUP_MS) {
     lastHistoryAt = now;
     future = [];
+    clearSampleMarker();
     return;
   }
 
@@ -60,6 +73,11 @@ function captureHistory(key = "", coalesce = true) {
   future = [];
   lastHistoryKey = key;
   lastHistoryAt = now;
+  clearSampleMarker();
+}
+
+export function isSampleProject() {
+  return Boolean(state?.books?.some((book) => book.extensions?.sample === true));
 }
 
 function resetHistory() {

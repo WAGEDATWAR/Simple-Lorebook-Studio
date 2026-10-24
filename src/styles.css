@@ -269,6 +269,57 @@ textarea::placeholder {
   white-space: nowrap;
 }
 
+.sample-badge {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  color: var(--warning);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.sample-badge:hover {
+  color: var(--text);
+}
+
+.onboarding-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.onboarding-points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding-left: 18px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.onboarding-points code {
+  padding: 1px 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.dialog-actions-stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.dialog-actions-stack .btn {
+  width: 100%;
+}
+
 .storage-banner {
   display: flex;
   flex-wrap: wrap;

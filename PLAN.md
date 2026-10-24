@@ -49,6 +49,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - A book overview with entry counts, total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, the longest entry, and budget usage.
 - Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
 - One-time migration of existing localStorage projects, backups, and snapshots into IndexedDB.
+- An append-only schema migration framework: stored and imported projects are upgraded to the current schema version on load, with a warning when a project comes from a newer version.
 - Native project JSON import and full-project backup export.
 - File System Access API support for opening and saving project files in place, with the topbar Open/Save controls and `Ctrl+O`/`Ctrl+Shift+S` shown only when the browser supports the API.
 - A periodic backup reminder banner when no project backup has been exported for a week, with a three-day snooze on dismiss.
@@ -81,7 +82,8 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Keyboard shortcuts: `/` search, `Alt+N` new entry, `Ctrl/Cmd+K` command palette, `Ctrl/Cmd+S` save, `Ctrl/Cmd+O` open project file, `Ctrl/Cmd+Shift+S` save project file, `Ctrl/Cmd+Z` undo, `Ctrl/Cmd+Shift+Z` or `Ctrl+Y` redo.
 - Responsive layout with a stacked sidebar/editor arrangement on narrow screens.
 - Auto-sized library sidebar with a 200-460 px drag/keyboard resize range, wrapped controls, and a collapsible 50 px rail. Width and collapse state persist locally.
-- Sample "Aurora Vale" project so the interface is meaningful on first run.
+- Sample "Aurora Vale" project so the interface is meaningful on first run, marked so it can be identified.
+- A first-run welcome dialog with options to explore the sample, start empty, or open the guide, plus a "Sample" badge in the topbar that resets to the sample or starts an empty project.
 
 ### Known gaps
 
@@ -115,6 +117,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/commands.js` | Pure command-palette filtering |
 | `src/simulation.js` | Pure context activation simulation and key matching |
+| `src/migrations.js` | Append-only project schema migrations |
 | `src/tokenizer/bpe.js` | Pure cl100k_base BPE encoder |
 | `src/tokenizer/worker.js` | Tokenizer web worker that loads ranks and counts text |
 | `src/tokenizer/client.js` | Main-thread worker client with an estimate fallback |
@@ -136,6 +139,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/limits.test.js` | Import size and project schema limit tests |
 | `test/commands.test.js` | Command-palette filtering tests |
 | `test/simulation.test.js` | Context activation and key-matching tests |
+| `test/migrations.test.js` | Schema migration and version handling tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
@@ -212,6 +216,8 @@ The main risk is state/rendering complexity as the feature set grows. Revisit on
 
 `ui` is session state and is not part of exported interchange formats. `sortMode` belongs to the current session state, while the chosen preference is also stored separately in localStorage. Selection state is session-only and lives in the store module.
 
+`version` is the schema version. `src/migrations.js` holds an append-only list of migrations and upgrades stored or imported projects to the current version on load. Migrations are never edited after release; a new migration is appended and `SCHEMA_VERSION` is bumped.
+
 ### Book
 
 ```text
@@ -256,7 +262,7 @@ The full-project backup uses a Lorebook Studio container:
 ```text
 {
   app: "lorebook-studio",
-  version: 1,
+  version: 2,
   exportedAt,
   activeBookId,
   activeEntryId,
@@ -478,8 +484,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 96 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 103 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
@@ -509,6 +515,7 @@ Planned checks:
 - Pre-import backups use the same native project container and remain restorable from the export dialog.
 - Revision history stores up to 12 local project snapshots within a total size budget, with deduplication by content signature. Restoring snapshots the current state first.
 - IndexedDB is the primary persistence layer; localStorage remains a fallback and migration source. Storage access is async, with a serialized write queue to avoid index races.
+- Schema changes ship as append-only migrations in `src/migrations.js`; `SCHEMA_VERSION` is bumped and older stored or imported projects are upgraded on load. Released migrations are never edited.
 - The app ships with no runtime dependencies. Dev dependencies are `axe-core` (accessibility audit) and `gpt-tokenizer` (tokenizer accuracy tests).
 - Token counts use a vendored cl100k_base BPE encoder (`src/tokenizer/bpe.js`) with the ranks loaded once in a web worker. The encoder is validated against `gpt-tokenizer` in tests, and the `chars / 4` estimate remains the fallback before the worker is ready or when workers are unavailable.
 - Autosave with explicit status, not manual-save-only.

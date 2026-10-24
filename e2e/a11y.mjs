@@ -7,7 +7,19 @@ import { launchBrowser, Page } from "./harness.mjs";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const fixture = resolve(root, "test", "fixtures", "sillytavern-world-info.json");
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function dismissOnboarding(page) {
+  await sleep(120);
+
+  if (await page.evaluate('Boolean(document.querySelector("#onboarding-dialog")?.open)')) {
+    await page.click("#onboarding-sample");
+    await page.waitFor('!document.querySelector("#onboarding-dialog")?.open');
+  }
+}
+
 const states = [
+  { name: "onboarding dialog", keepOnboarding: true, setup: async () => {} },
   { name: "workspace", setup: async () => {} },
   { name: "command palette", setup: async (page) => {
     await page.click("#command-btn");
@@ -100,6 +112,11 @@ async function main() {
       page.clearErrors();
       await page.resetStorage();
       await page.waitFor('document.querySelector("#book-name")?.value');
+
+      if (!state.keepOnboarding) {
+        await dismissOnboarding(page);
+      }
+
       await state.setup(page);
 
       const violations = await page.evaluate(AXE_RUN);

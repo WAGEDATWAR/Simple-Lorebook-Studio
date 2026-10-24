@@ -4,6 +4,13 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-22
+
+### Added
+
+- An append-only schema migration framework that upgrades stored and imported projects to the current schema version on load, and warns about projects from a newer version.
+- A first-run onboarding dialog plus a "Sample" badge that resets to the sample project or starts an empty one.
+
 ## [0.7.0] - 2026-10-22
 
 ### Added

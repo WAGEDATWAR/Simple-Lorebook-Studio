@@ -1,10 +1,20 @@
 import assert from "node:assert/strict";
 import { sleep } from "./harness.mjs";
 
+async function dismissOnboarding(page) {
+  await sleep(120);
+
+  if (await page.evaluate('Boolean(document.querySelector("#onboarding-dialog")?.open)')) {
+    await page.click("#onboarding-sample");
+    await page.waitFor('!document.querySelector("#onboarding-dialog")?.open');
+  }
+}
+
 async function resetApp(page) {
   page.clearErrors();
   await page.resetStorage();
   await page.waitFor('document.querySelector("#book-name")?.value');
+  await dismissOnboarding(page);
 }
 
 async function appState(page) {
@@ -108,6 +118,43 @@ export const scenarios = [
       assert.equal(state.book, "Aurora Vale");
       assert.equal(state.entries, 3);
       assert.deepEqual(state.books, ["Aurora Vale"]);
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "shows first-run onboarding and can start empty",
+    async run(page) {
+      page.clearErrors();
+      await page.resetStorage();
+      await page.waitFor('document.querySelector("#onboarding-dialog")?.open');
+      await page.click("#onboarding-empty");
+      await page.waitFor('!document.querySelector("#onboarding-dialog")?.open');
+      await page.waitFor('document.querySelector("#book-name")?.value === "Untitled Lorebook"');
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 0');
+      await page.waitFor('document.querySelector("#sample-badge")?.hidden === true');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "shows a sample badge and clears it after an edit",
+    async run(page) {
+      await resetApp(page);
+      await page.waitFor('document.querySelector("#sample-badge")?.hidden === false');
+      await page.click("#add-entry-btn");
+      await page.waitFor('document.querySelector("#sample-badge")?.hidden === true');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "resets to the sample project",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#sample-badge");
+      await page.waitFor('document.querySelector("#sample-dialog")?.open');
+      await page.click("#sample-reset");
+      await page.waitFor('!document.querySelector("#sample-dialog")?.open');
+      await page.waitFor('document.querySelector("#book-name")?.value === "Aurora Vale"');
+      await page.waitFor('document.querySelector("#sample-badge")?.hidden === false');
       assert.deepEqual(page.errors, []);
     }
   },

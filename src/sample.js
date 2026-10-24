@@ -6,6 +6,7 @@ export function createSampleProject() {
       {
         name: "Aurora Vale",
         description: "A storm-worn coastal city, its tide-readers, and the secrets beneath the harbor.",
+        extensions: { sample: true },
         entries: [
           {
             title: "Aurora Vale",

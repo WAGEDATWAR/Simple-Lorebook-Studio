@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.7.0">
+  <meta name="app-version" content="0.7.1">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -30,6 +30,7 @@
       <div class="doc-title">
         <label class="sr-only" for="book-name">Lorebook name</label>
         <input id="book-name" class="doc-name" type="text" autocomplete="off" spellcheck="false" title="Click to rename this lorebook" placeholder="Untitled Lorebook">
+        <button id="sample-badge" class="sample-badge" type="button" title="This is the sample project. Click to reset or start empty." hidden>Sample</button>
         <span id="save-state" class="save-state" data-state="saved" role="status" aria-live="polite">
           <span class="save-dot" aria-hidden="true"></span>
           <span class="save-label">Saved</span>
@@ -658,6 +659,41 @@
       <div class="dialog-actions">
         <button id="confirm-cancel" class="btn" type="button">Cancel</button>
         <button id="confirm-accept" class="btn btn-danger" type="button">Confirm</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="onboarding-dialog" class="dialog onboarding-dialog" aria-labelledby="onboarding-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Welcome</p>
+        <h2 id="onboarding-title">Welcome to Lorebook Studio</h2>
+        <p class="dialog-copy">A local-first editor for lorebooks used in LLM roleplay frontends.</p>
+      </div>
+      <ul class="onboarding-points">
+        <li>Everything is stored in your browser. No accounts, no analytics, no uploads.</li>
+        <li>Add entries, give them trigger keys, then export for SillyTavern, Chub, character cards, or native use.</li>
+        <li>Press <code>Ctrl/Cmd+K</code> for the command palette and <code>Ctrl/Cmd+S</code> to save.</li>
+      </ul>
+      <div class="dialog-actions dialog-actions-stack">
+        <button id="onboarding-sample" class="btn btn-primary" type="button">Explore the sample lorebook</button>
+        <button id="onboarding-empty" class="btn" type="button">Start with an empty lorebook</button>
+        <button id="onboarding-guide" class="btn" type="button">Open the getting-started guide</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="sample-dialog" class="dialog" aria-labelledby="sample-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Sample project</p>
+        <h2 id="sample-title">This is the sample lorebook</h2>
+        <p class="dialog-copy">Edit it freely, reset it to the original demo, or replace it with an empty project.</p>
+      </div>
+      <div class="dialog-actions dialog-actions-stack">
+        <button id="sample-reset" class="btn btn-primary" type="button">Reset to the sample</button>
+        <button id="sample-empty" class="btn" type="button">Start with an empty lorebook</button>
+        <button id="sample-cancel" class="btn" type="button">Cancel</button>
       </div>
     </div>
   </dialog>

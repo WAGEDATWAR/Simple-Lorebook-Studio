@@ -1,5 +1,6 @@
 import { EXPORT_FORMATS, parseLorebookData, serializeLorebook } from "./formats/index.js";
 import { checkImportText, checkProjectLimits } from "./limits.js";
+import { migrateProjectData } from "./migrations.js";
 import { APP_ID, SCHEMA_VERSION } from "./schema.js";
 
 export { EXPORT_FORMATS, serializeLorebook };
@@ -19,7 +20,8 @@ export function parseProject(text, options = {}) {
     return { ok: false, error: "That file isn't valid JSON." };
   }
 
-  const parsed = parseLorebookData(data, options);
+  const migration = migrateProjectData(data);
+  const parsed = parseLorebookData(migration.data, options);
 
   if (!parsed.ok) {
     return parsed;
@@ -31,7 +33,17 @@ export function parseProject(text, options = {}) {
     return limits;
   }
 
-  return parsed;
+  const warnings = [...(parsed.warnings ?? [])];
+
+  if (migration.applied.length) {
+    warnings.push(`Upgraded project schema ${migration.from} \u2192 ${SCHEMA_VERSION}.`);
+  }
+
+  if (migration.newer) {
+    warnings.push("This project was created with a newer version and may contain unsupported fields.");
+  }
+
+  return { ...parsed, warnings, migrations: migration.applied };
 }
 
 export function buildExport(state) {

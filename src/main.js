@@ -23,6 +23,7 @@ import {
   getSelectionAnchorId,
   getState,
   getTagFilters,
+  isSampleProject,
   initStore,
   moveEntry,
   redo,
@@ -61,7 +62,8 @@ import {
 import { diffProjects } from "./diff.js";
 import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
-import { normalizeTagList } from "./schema.js";
+import { createSampleProject } from "./sample.js";
+import { createProject, normalizeTagList } from "./schema.js";
 import { SIMULATION_REASONS, simulateContext } from "./simulation.js";
 import { createTokenizer, estimateTokens } from "./tokenizer/client.js";
 import { buildBookOverview } from "./overview.js";
@@ -123,6 +125,15 @@ const refs = {
   storageUsageProject: document.querySelector("#storage-usage-project"),
   storageUsageRevisions: document.querySelector("#storage-usage-revisions"),
   commandBtn: document.querySelector("#command-btn"),
+  sampleBadge: document.querySelector("#sample-badge"),
+  onboardingDialog: document.querySelector("#onboarding-dialog"),
+  onboardingSampleBtn: document.querySelector("#onboarding-sample"),
+  onboardingEmptyBtn: document.querySelector("#onboarding-empty"),
+  onboardingGuideBtn: document.querySelector("#onboarding-guide"),
+  sampleDialog: document.querySelector("#sample-dialog"),
+  sampleResetBtn: document.querySelector("#sample-reset"),
+  sampleEmptyBtn: document.querySelector("#sample-empty"),
+  sampleCancelBtn: document.querySelector("#sample-cancel"),
   aboutBtn: document.querySelector("#about-btn"),
   aboutDialog: document.querySelector("#about-dialog"),
   aboutVersion: document.querySelector("#about-version"),
@@ -284,6 +295,7 @@ const SIDEBAR_WIDTH_KEY = "lorebook-studio:sidebar-width:v1";
 const SORT_STATE_KEY = "lorebook-studio:sort:v1";
 const FILTER_STATE_KEY = "lorebook-studio:filters:v1";
 const TAG_FILTER_STATE_KEY = "lorebook-studio:tag-filters:v1";
+const ONBOARDED_KEY = "lorebook-studio:onboarded:v1";
 const LAST_BACKUP_KEY = "lorebook-studio:last-backup:v1";
 const BACKUP_SNOOZE_KEY = "lorebook-studio:backup-reminder-snooze:v1";
 const BACKUP_REMINDER_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -680,6 +692,62 @@ function openGuideDialog() {
   }
 }
 
+function markOnboarded() {
+  try {
+    localStorage.setItem(ONBOARDED_KEY, "1");
+  } catch {
+    return;
+  }
+}
+
+function openOnboardingDialog() {
+  if (!refs.onboardingDialog.open) {
+    refs.onboardingDialog.showModal();
+  }
+}
+
+function maybeShowOnboarding() {
+  let seen = null;
+
+  try {
+    seen = localStorage.getItem(ONBOARDED_KEY);
+  } catch {
+    seen = null;
+  }
+
+  if (!seen) {
+    openOnboardingDialog();
+  }
+}
+
+function updateSampleBadge() {
+  refs.sampleBadge.hidden = !isSampleProject();
+}
+
+function openSampleDialog() {
+  if (!refs.sampleDialog.open) {
+    refs.sampleDialog.showModal();
+  }
+}
+
+function startEmptyProject() {
+  replaceProject(createProject({ books: [{ name: "Untitled Lorebook" }] }));
+  clearSearch();
+  setSortMode("manual");
+  renderAll();
+  scheduleSave();
+  toast("Started an empty lorebook", "success");
+}
+
+function resetSampleProject() {
+  replaceProject(createSampleProject());
+  clearSearch();
+  setSortMode("manual");
+  renderAll();
+  scheduleSave();
+  toast("Sample project restored", "success");
+}
+
 function commandRunSort(mode) {
   return () => {
     setSortMode(mode);
@@ -733,6 +801,8 @@ function buildCommands() {
     { title: "Filter: always-on entries", keywords: ["filter"], run: commandToggleFilter("alwaysOn") },
     { title: "Filter: entries missing keys", keywords: ["filter"], run: commandToggleFilter("missingKeys") },
     { title: "Getting started", keywords: ["guide", "help", "docs"], run: openGuideDialog },
+    { title: "Show welcome", keywords: ["onboarding", "start"], run: openOnboardingDialog },
+    { title: "Start empty lorebook", keywords: ["new", "blank", "reset"], run: startEmptyProject },
     { title: "About Lorebook Studio", keywords: ["version", "privacy", "info"], run: () => openAboutDialog() }
   ];
 
@@ -899,6 +969,7 @@ function renderAll() {
   updateHistoryButtons();
   updateValidationIndicator();
   updateBudgetStatus();
+  updateSampleBadge();
   updateDocumentTitle();
 }
 
@@ -906,18 +977,29 @@ function updateBudgetStatus() {
   const book = getActiveBook();
   const budget = Number.isFinite(book?.tokenBudget) ? book.tokenBudget : 0;
   const entries = book?.entries ?? [];
-  const ready = tokenizer.isReady();
-  const prefix = ready ? "" : "~";
   let enabledTokens = 0;
+  let enabledCount = 0;
+  let measuredCount = 0;
 
   for (const entry of entries) {
     if (!entry.enabled) {
       continue;
     }
 
+    enabledCount += 1;
+    tokenizer.request(entry.content);
     const measured = tokenizer.count(entry.content);
-    enabledTokens += Number.isFinite(measured) ? measured : estimateTokens(entry.content);
+
+    if (Number.isFinite(measured)) {
+      enabledTokens += measured;
+      measuredCount += 1;
+    } else {
+      enabledTokens += estimateTokens(entry.content);
+    }
   }
+
+  const measured = enabledCount > 0 && measuredCount === enabledCount;
+  const prefix = measured ? "" : "~";
 
   refs.bookTokenBudget.value = String(budget);
 
@@ -928,13 +1010,6 @@ function updateBudgetStatus() {
       ? `Over budget by ${numberFormatter.format(enabledTokens - budget)} tokens (${prefix}${numberFormatter.format(enabledTokens)} / ${numberFormatter.format(budget)})`
       : `${prefix}${numberFormatter.format(enabledTokens)} of ${numberFormatter.format(budget)} tokens`;
     refs.bookBudgetStatus.classList.toggle("is-over", over);
-
-    for (const entry of entries) {
-      if (entry.enabled) {
-        tokenizer.request(entry.content);
-      }
-    }
-
     return;
   }
 
@@ -1116,7 +1191,7 @@ function createSimulationItem(item) {
   const meta = document.createElement("span");
   const measured = tokenizer.count(item.entry.content);
   const tokens = Number.isFinite(measured) ? measured : estimateTokens(item.entry.content);
-  const prefix = tokenizer.isReady() ? "" : "~";
+  const prefix = Number.isFinite(measured) ? "" : "~";
   const matchLabel = item.reason === "alwaysOn"
     ? "Always on"
     : item.matchedKeys.length
@@ -1145,8 +1220,6 @@ function renderSimulationResults() {
   const entries = book?.entries ?? [];
   const enabledCount = entries.filter((entry) => entry.enabled).length;
   const result = simulateContext(book, refs.simulationInput.value);
-  const ready = tokenizer.isReady();
-  const prefix = ready ? "" : "~";
 
   for (const item of result.activated) {
     tokenizer.request(item.entry.content);
@@ -1156,6 +1229,7 @@ function renderSimulationResults() {
 
   const measuredTotal = tokenizer.count(result.injectedText);
   const totalTokens = Number.isFinite(measuredTotal) ? measuredTotal : estimateTokens(result.injectedText);
+  const prefix = Number.isFinite(measuredTotal) ? "" : "~";
 
   refs.simulationSummary.textContent = `${result.activated.length} of ${enabledCount} enabled ${enabledCount === 1 ? "entry" : "entries"} activate \u00b7 ${prefix}${numberFormatter.format(totalTokens)} tokens injected`;
   refs.simulationResults.replaceChildren();
@@ -2784,6 +2858,57 @@ refs.commandBtn.addEventListener("click", () => {
   openCommandPalette(buildCommands());
 });
 
+refs.sampleBadge.addEventListener("click", () => {
+  openSampleDialog();
+});
+
+refs.sampleResetBtn.addEventListener("click", () => {
+  refs.sampleDialog.close();
+  resetSampleProject();
+});
+
+refs.sampleEmptyBtn.addEventListener("click", () => {
+  refs.sampleDialog.close();
+  startEmptyProject();
+});
+
+refs.sampleCancelBtn.addEventListener("click", () => {
+  refs.sampleDialog.close();
+});
+
+refs.sampleDialog.addEventListener("click", (event) => {
+  if (event.target === refs.sampleDialog) {
+    refs.sampleDialog.close();
+  }
+});
+
+refs.onboardingSampleBtn.addEventListener("click", () => {
+  markOnboarded();
+  refs.onboardingDialog.close();
+});
+
+refs.onboardingEmptyBtn.addEventListener("click", () => {
+  markOnboarded();
+  refs.onboardingDialog.close();
+  startEmptyProject();
+});
+
+refs.onboardingGuideBtn.addEventListener("click", () => {
+  markOnboarded();
+  refs.onboardingDialog.close();
+  openGuideDialog();
+});
+
+refs.onboardingDialog.addEventListener("close", () => {
+  markOnboarded();
+});
+
+refs.onboardingDialog.addEventListener("click", (event) => {
+  if (event.target === refs.onboardingDialog) {
+    refs.onboardingDialog.close();
+  }
+});
+
 refs.aboutBtn.addEventListener("click", () => {
   openAboutDialog();
 });
@@ -3079,3 +3204,4 @@ if (supportsFileSystemAccess()) {
 }
 
 maybeRemindBackup();
+maybeShowOnboarding();

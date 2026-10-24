@@ -27,10 +27,10 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 ## Next Up
 
 - [ ] [P1] [Medium] Add global search across all lorebooks, with results grouped by lorebook and a jump to the entry.
-- [ ] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
+- [ ] [P1] [Low] Add issue-type filtering by clicking the issue-type counts in the validation dialog.
+- [ ] [P1] [Medium] Add a project data-integrity check and repair tool for corrupt or partially migrated local data.
 - [ ] [P1] [High] Add bulk find and replace across entries with a preview diff before applying.
 - [ ] [P1] [High] Add duplicate, merge, and split lorebook actions (the entry-level duplicate exists; books do not).
-- [ ] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
 
 ## Editor and Authoring
@@ -54,7 +54,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Medium] Support markdown preview for content if the target frontends interpret it consistently.
 - [ ] [P2] [Low] Add per-entry color or tag labels for visual grouping.
 - [ ] [P2] [Medium] Add a "peek" preview showing the text as it would be injected.
-- [ ] [P1] [Low] Add issue-type filtering by clicking the issue-type counts in the validation dialog.
 - [ ] [P2] [Low] Add bulk tag assignment (add/remove tags) for selected entries.
 - [ ] [P2] [Medium] Suggest trigger keys from the title and content, and offer one-click add.
 - [ ] [P2] [Medium] Add configurable default entry properties (always on, selective, case sensitive, match whole words) for new entries.
@@ -119,8 +118,8 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [ ] [P2] [Medium] Add optional project import/export of the full UI state.
 - [ ] [P2] [Very High] Add cloud sync only if it can remain opt-in, private, and simple.
 - [x] [P2] [Low] Add storage usage reporting.
+- [x] [P1] [High] Add a schema migration framework that upgrades older project versions instead of dropping unknown data.
 - [ ] [P2] [High] Add encrypted local projects if sensitive content becomes a requirement.
-- [ ] [P1] [Medium] Add a project data-integrity check and repair tool for corrupt or partially migrated local data.
 - [ ] [P2] [Medium] Show a "what changed since your last session" summary on load.
 
 ## UI, UX, and Accessibility
@@ -130,6 +129,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 - [x] [P1] [Low] Verify focus restoration after delete, book switch, and dialog dismissal.
 - [x] [P1] [Medium] Add a proper unsaved-changes strategy for failed localStorage writes.
 - [x] [P1] [High] Run an automated accessibility audit and fix all critical issues.
+- [x] [P1] [Medium] Add an onboarding flow and a clear sample-project badge/reset.
 - [x] [P1] [Medium] Add a command palette for quick actions.
 - [ ] [P2] [Low] Hide field hint text while a field has content, showing it again only when the field is empty or focused.
 - [ ] [P2] [Low] Add hover-based hint popup dialogs on desktop for fields and controls with longer explanations.
