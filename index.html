@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.7.1">
+  <meta name="app-version" content="0.7.2">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -698,6 +698,21 @@
     </div>
   </dialog>
 
+  <dialog id="integrity-dialog" class="dialog integrity-dialog" aria-labelledby="integrity-title">
+    <div class="dialog-inner">
+      <div class="dialog-heading">
+        <p class="eyebrow">Data integrity</p>
+        <h2 id="integrity-title">Check and repair</h2>
+        <p id="integrity-summary" class="dialog-copy">Checking…</p>
+      </div>
+      <div id="integrity-results" class="integrity-results"></div>
+      <div class="dialog-actions">
+        <button id="integrity-repair" class="btn btn-primary" type="button" disabled>Repair</button>
+        <button id="integrity-close" class="btn" type="button">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="command-dialog" class="dialog command-dialog" aria-labelledby="command-title">
     <div class="dialog-inner">
       <h2 id="command-title" class="sr-only">Command palette</h2>
@@ -726,6 +741,7 @@
       </dl>
       <div class="dialog-actions">
         <button id="about-guide-btn" class="btn btn-primary" type="button">Getting started</button>
+        <button id="about-integrity-btn" class="btn" type="button">Check data integrity</button>
         <button id="about-close" class="btn" type="button">Close</button>
       </div>
     </div>

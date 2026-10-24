@@ -49,17 +49,20 @@ import {
 } from "./store.js";
 import {
   getProjectBackupInfo,
+  getRevisionIntegrity,
   getRevisions,
   getStorageUsage,
   initStorage,
   loadProject,
   loadProjectBackup,
   loadRevision,
+  repairRevisions,
   saveProjectBackup,
   saveProjectDetailed,
   saveRevision
 } from "./storage.js";
 import { diffProjects } from "./diff.js";
+import { checkProjectIntegrity, repairProject } from "./integrity.js";
 import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { createSampleProject } from "./sample.js";
@@ -141,7 +144,13 @@ const refs = {
   aboutExportFormats: document.querySelector("#about-export-formats"),
   aboutStorage: document.querySelector("#about-storage"),
   aboutGuideBtn: document.querySelector("#about-guide-btn"),
+  aboutIntegrityBtn: document.querySelector("#about-integrity-btn"),
   aboutCloseBtn: document.querySelector("#about-close"),
+  integrityDialog: document.querySelector("#integrity-dialog"),
+  integritySummary: document.querySelector("#integrity-summary"),
+  integrityResults: document.querySelector("#integrity-results"),
+  integrityRepairBtn: document.querySelector("#integrity-repair"),
+  integrityCloseBtn: document.querySelector("#integrity-close"),
   guideDialog: document.querySelector("#guide-dialog"),
   guideCloseBtn: document.querySelector("#guide-close"),
   bookSelect: document.querySelector("#book-select"),
@@ -287,6 +296,7 @@ let saveFailed = false;
 let unsavedChanges = false;
 let projectFileHandle = null;
 let simulationTimer = 0;
+let validationFilter = null;
 const numberFormatter = new Intl.NumberFormat("en-US");
 
 const DETAILS_STATE_KEY = "lorebook-studio:details-collapsed:v1";
@@ -686,6 +696,76 @@ async function openAboutDialog() {
   await renderAboutDialog();
 }
 
+async function renderIntegrityDialog() {
+  const projectReport = checkProjectIntegrity(getState());
+  const revisionReport = await getRevisionIntegrity();
+  const problems = [...projectReport.problems];
+
+  if (revisionReport.missingPayloads.length) {
+    problems.push({
+      code: "revisionMissing",
+      label: "Snapshots with missing data",
+      count: revisionReport.missingPayloads.length
+    });
+  }
+
+  if (revisionReport.orphanedPayloads.length) {
+    problems.push({
+      code: "revisionOrphaned",
+      label: "Orphaned snapshot data",
+      count: revisionReport.orphanedPayloads.length
+    });
+  }
+
+  refs.integritySummary.textContent = problems.length
+    ? `${problems.length} ${problems.length === 1 ? "issue" : "issues"} found. Repair to fix them.`
+    : "No integrity issues found. The project and snapshots are consistent.";
+  refs.integrityResults.replaceChildren();
+
+  for (const problem of problems) {
+    const row = document.createElement("div");
+    const label = document.createElement("span");
+    const count = document.createElement("span");
+    row.className = "integrity-problem";
+    label.className = "integrity-problem-label";
+    count.className = "integrity-problem-count";
+    label.textContent = problem.label;
+    count.textContent = String(problem.count);
+    row.append(label, count);
+    refs.integrityResults.append(row);
+  }
+
+  refs.integrityRepairBtn.disabled = problems.length === 0;
+}
+
+async function openIntegrityDialog() {
+  if (!refs.integrityDialog.open) {
+    refs.integrityDialog.showModal();
+  }
+
+  await renderIntegrityDialog();
+}
+
+async function handleIntegrityRepair() {
+  const projectReport = checkProjectIntegrity(getState());
+
+  if (projectReport.problems.length) {
+    replaceProject(repairProject(getState()));
+    clearSearch();
+    renderAll();
+  }
+
+  const revisionReport = await getRevisionIntegrity();
+
+  if (revisionReport.missingPayloads.length || revisionReport.orphanedPayloads.length) {
+    await repairRevisions();
+  }
+
+  await flushSave();
+  await renderIntegrityDialog();
+  toast("Repaired project data", "success");
+}
+
 function openGuideDialog() {
   if (!refs.guideDialog.open) {
     refs.guideDialog.showModal();
@@ -803,6 +883,7 @@ function buildCommands() {
     { title: "Getting started", keywords: ["guide", "help", "docs"], run: openGuideDialog },
     { title: "Show welcome", keywords: ["onboarding", "start"], run: openOnboardingDialog },
     { title: "Start empty lorebook", keywords: ["new", "blank", "reset"], run: startEmptyProject },
+    { title: "Check data integrity", keywords: ["repair", "diagnostics", "snapshots"], run: () => openIntegrityDialog() },
     { title: "About Lorebook Studio", keywords: ["version", "privacy", "info"], run: () => openAboutDialog() }
   ];
 
@@ -1055,9 +1136,33 @@ function updateValidationIndicator() {
   refs.validationBtn.title = label;
 }
 
+function createValidationChip(label, count, code) {
+  const chip = document.createElement("button");
+  const value = document.createElement("strong");
+  const active = validationFilter === code;
+
+  chip.type = "button";
+  chip.className = "validation-chip";
+  chip.setAttribute("aria-pressed", String(active));
+  chip.classList.toggle("is-active", active);
+
+  if (code) {
+    chip.dataset.validationFilter = code;
+  } else {
+    chip.dataset.validationAll = "1";
+  }
+
+  chip.append(document.createTextNode(`${label} `), value);
+  value.textContent = String(count);
+  return chip;
+}
+
 function renderValidationDialog() {
   const issues = validateBook(getActiveBook());
   const entryCount = new Set(issues.map((issue) => issue.entryId)).size;
+  const filtered = validationFilter
+    ? issues.filter((issue) => issue.code === validationFilter)
+    : issues;
 
   refs.validationSummary.textContent = issues.length
     ? `${issues.length} ${issues.length === 1 ? "issue" : "issues"} across ${entryCount} ${entryCount === 1 ? "entry" : "entries"}.`
@@ -1074,6 +1179,8 @@ function renderValidationDialog() {
     return;
   }
 
+  refs.validationCategories.append(createValidationChip("All", issues.length, null));
+
   for (const [code, label] of Object.entries(VALIDATION_LABELS)) {
     const count = issues.filter((issue) => issue.code === code).length;
 
@@ -1081,18 +1188,13 @@ function renderValidationDialog() {
       continue;
     }
 
-    const chip = document.createElement("span");
-    const value = document.createElement("strong");
-    chip.className = "validation-chip";
-    chip.append(document.createTextNode(`${label} `), value);
-    value.textContent = String(count);
-    refs.validationCategories.append(chip);
+    refs.validationCategories.append(createValidationChip(label, count, code));
   }
 
   refs.validationCategories.hidden = false;
   const fragment = document.createDocumentFragment();
 
-  for (const issue of issues) {
+  for (const issue of filtered) {
     const button = document.createElement("button");
     const head = document.createElement("span");
     const type = document.createElement("span");
@@ -1119,6 +1221,7 @@ function renderValidationDialog() {
 }
 
 function openValidationDialog() {
+  validationFilter = null;
   renderValidationDialog();
   refs.validationDialog.showModal();
 }
@@ -2918,6 +3021,25 @@ refs.aboutGuideBtn.addEventListener("click", () => {
   openGuideDialog();
 });
 
+refs.aboutIntegrityBtn.addEventListener("click", () => {
+  refs.aboutDialog.close();
+  openIntegrityDialog();
+});
+
+refs.integrityRepairBtn.addEventListener("click", () => {
+  handleIntegrityRepair();
+});
+
+refs.integrityCloseBtn.addEventListener("click", () => {
+  refs.integrityDialog.close();
+});
+
+refs.integrityDialog.addEventListener("click", (event) => {
+  if (event.target === refs.integrityDialog) {
+    refs.integrityDialog.close();
+  }
+});
+
 refs.aboutCloseBtn.addEventListener("click", () => {
   refs.aboutDialog.close();
 });
@@ -3039,6 +3161,24 @@ refs.validationBtn.addEventListener("click", openValidationDialog);
 
 refs.validationCloseBtn.addEventListener("click", () => {
   refs.validationDialog.close();
+});
+
+refs.validationCategories.addEventListener("click", (event) => {
+  if (event.target.closest("[data-validation-all]")) {
+    validationFilter = null;
+    renderValidationDialog();
+    return;
+  }
+
+  const chip = event.target.closest("[data-validation-filter]");
+
+  if (!chip) {
+    return;
+  }
+
+  const code = chip.dataset.validationFilter;
+  validationFilter = validationFilter === code ? null : code;
+  renderValidationDialog();
 });
 
 refs.validationIssues.addEventListener("click", (event) => {

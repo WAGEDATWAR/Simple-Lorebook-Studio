@@ -388,6 +388,82 @@ export async function loadRevision(id) {
   }
 }
 
+export async function getRevisionIntegrity() {
+  const target = getBackend();
+  const index = await readRevisionIndex();
+  const indexIds = new Set(index.map((revision) => revision.id));
+  const missingPayloads = [];
+  const orphanedPayloads = [];
+
+  for (const revision of index) {
+    try {
+      const raw = await target.get(revisionKey(revision.id));
+
+      if (!raw) {
+        missingPayloads.push(revision.id);
+      }
+    } catch {
+      missingPayloads.push(revision.id);
+    }
+  }
+
+  try {
+    const keys = await target.keys();
+
+    for (const key of keys) {
+      if (typeof key !== "string" || !key.startsWith(REVISION_KEY_PREFIX)) {
+        continue;
+      }
+
+      const id = key.slice(REVISION_KEY_PREFIX.length);
+
+      if (!indexIds.has(id)) {
+        orphanedPayloads.push(id);
+      }
+    }
+  } catch {
+    // Key enumeration is unavailable; skip orphan detection.
+  }
+
+  return {
+    ok: true,
+    indexCount: index.length,
+    missingPayloads,
+    orphanedPayloads
+  };
+}
+
+export async function repairRevisions() {
+  const target = getBackend();
+  const integrity = await getRevisionIntegrity();
+  const index = await readRevisionIndex();
+  const missing = new Set(integrity.missingPayloads);
+  const kept = index.filter((revision) => !missing.has(revision.id));
+
+  for (const id of integrity.missingPayloads) {
+    try {
+      await target.remove(revisionKey(id));
+    } catch {
+      continue;
+    }
+  }
+
+  for (const id of integrity.orphanedPayloads) {
+    try {
+      await target.remove(revisionKey(id));
+    } catch {
+      continue;
+    }
+  }
+
+  await target.set(REVISIONS_KEY, JSON.stringify(kept));
+
+  return {
+    ok: true,
+    removed: integrity.missingPayloads.length + integrity.orphanedPayloads.length
+  };
+}
+
 export async function saveProjectBackup(state, reason = "") {
   return enqueue(async () => {
     try {

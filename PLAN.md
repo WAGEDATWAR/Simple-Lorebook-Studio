@@ -34,7 +34,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Lorebook create, rename, switch, and delete.
 - Editable book descriptions stored with each lorebook and previewed in the sidebar.
 - Lorebook information section with the description, overview, and validation controls above entry search.
-- Book-level validation for empty content, repeated keys, key collisions across entries, invalid regex keys, missing keys, unreachable enabled entries, and insertion-order collisions, with jump-to-entry issue links.
+- Book-level validation for empty content, repeated keys, key collisions across entries, invalid regex keys, missing keys, unreachable enabled entries, and insertion-order collisions, with clickable category counts that filter the issue list and jump-to-entry issue links.
 - Entry create, select, edit, duplicate, and delete.
 - Reusable built-in entry templates for characters, locations, factions, items, and events.
 - Search across title, content, trigger keys, secondary keys, author notes, and tags, with matched text highlighted and a per-card note explaining which fields matched.
@@ -50,6 +50,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
 - One-time migration of existing localStorage projects, backups, and snapshots into IndexedDB.
 - An append-only schema migration framework: stored and imported projects are upgraded to the current schema version on load, with a warning when a project comes from a newer version.
+- A data-integrity check and repair tool that finds duplicate book or entry IDs, duplicate source UIDs, missing entry lists, dangling active references, and missing or orphaned snapshot payloads, then repairs them.
 - Native project JSON import and full-project backup export.
 - File System Access API support for opening and saving project files in place, with the topbar Open/Save controls and `Ctrl+O`/`Ctrl+Shift+S` shown only when the browser supports the API.
 - A periodic backup reminder banner when no project backup has been exported for a week, with a three-day snooze on dismiss.
@@ -118,6 +119,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/commands.js` | Pure command-palette filtering |
 | `src/simulation.js` | Pure context activation simulation and key matching |
 | `src/migrations.js` | Append-only project schema migrations |
+| `src/integrity.js` | Project integrity checks and repair |
 | `src/tokenizer/bpe.js` | Pure cl100k_base BPE encoder |
 | `src/tokenizer/worker.js` | Tokenizer web worker that loads ranks and counts text |
 | `src/tokenizer/client.js` | Main-thread worker client with an estimate fallback |
@@ -140,6 +142,7 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `test/commands.test.js` | Command-palette filtering tests |
 | `test/simulation.test.js` | Context activation and key-matching tests |
 | `test/migrations.test.js` | Schema migration and version handling tests |
+| `test/integrity.test.js` | Project integrity check and repair tests |
 | `test/validation.test.js` | Empty content, duplicate key, key collision, invalid regex, missing key, unreachable entry, and order collision tests |
 | `test/fixtures/` | Realistic SillyTavern and Chub interchange fixtures |
 | `test/storage.test.js` | Project persistence, pre-import backup, and revision snapshot tests |
@@ -393,7 +396,8 @@ Selected surfaces use accent tints rather than saturated fills. Borders carry st
 - A backup reminder appears when no project backup has been exported for a week and can be snoozed for three days.
 - Book descriptions live in a collapsible lorebook-information section with a one-line preview.
 - The lorebook-information section also exposes the overview and validation controls, keeping entry count and sorting separate.
-- The validation control summarizes issues; its dialog groups issues by type and makes each issue jump to the affected entry after clearing search.
+- The validation control summarizes issues; its dialog groups issues by type, lets the category counts filter the list, and makes each issue jump to the affected entry after clearing search.
+- The About panel links to a data-integrity dialog that reports project and snapshot problems and repairs them on request.
 - The overview control summarizes entry counts, token counts, key coverage, budget usage, and the longest entry for the active book.
 - The simulation control previews activation for pasted context: activated entries in order with matched keys and tokens, the combined injected text, and the inactive entries with reasons. Activating an entry from the results jumps to it.
 - The library sidebar auto-fits its control rows, wraps at narrower widths, resizes by drag or keyboard, resets to auto-fit on double-click, and collapses to a 50 px rail.
@@ -484,8 +488,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 103 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, schema migrations, project integrity, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, context simulation, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 109 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for first-run onboarding, the sample badge and reset, boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, context simulation, validation issue-type filtering, data-integrity checks, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.

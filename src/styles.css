@@ -2688,6 +2688,23 @@ body.is-resizing-sidebar {
   background: var(--warning-soft);
   border: 1px solid var(--warning-border);
   border-radius: 6px;
+  cursor: pointer;
+  transition: color 130ms ease, background 130ms ease, border-color 130ms ease;
+}
+
+.validation-chip:hover {
+  color: var(--text);
+  border-color: var(--warning);
+}
+
+.validation-chip.is-active {
+  color: var(--text);
+  background: var(--warning);
+  border-color: var(--warning);
+}
+
+.validation-chip.is-active strong {
+  color: var(--surface);
 }
 
 .validation-chip strong {
@@ -3457,9 +3474,42 @@ body.is-resizing-sidebar {
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
+}
+
+.integrity-dialog {
+  width: min(480px, calc(100vw - 32px));
+}
+
+.integrity-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 0;
+}
+
+.integrity-problem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  border-radius: 8px;
+}
+
+.integrity-problem-count {
+  flex-shrink: 0;
+  color: var(--warning);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .toast-stack {

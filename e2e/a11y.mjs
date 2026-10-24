@@ -51,6 +51,13 @@ const states = [
     await page.click("#about-btn");
     await page.waitFor('document.querySelector("#about-dialog")?.open');
   } },
+  { name: "integrity dialog", setup: async (page) => {
+    await page.click("#about-btn");
+    await page.waitFor('document.querySelector("#about-dialog")?.open');
+    await page.click("#about-integrity-btn");
+    await page.waitFor('document.querySelector("#integrity-dialog")?.open');
+    await page.waitFor('document.querySelector("#integrity-summary").textContent.length > 0');
+  } },
   { name: "guide dialog", setup: async (page) => {
     await page.click("#about-btn");
     await page.waitFor('document.querySelector("#about-dialog")?.open');

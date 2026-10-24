@@ -695,6 +695,47 @@ export const scenarios = [
     }
   },
   {
+    name: "filters validation issues by type",
+    async run(page) {
+      await resetApp(page);
+      await page.click("#add-entry-btn");
+      await page.waitFor('document.querySelectorAll(".entry-card").length === 4');
+      await page.click("#validation-btn");
+      await page.waitFor('document.querySelector("#validation-dialog")?.open');
+      await page.waitFor('document.querySelectorAll(".validation-issue").length >= 2');
+
+      const total = await page.evaluate('document.querySelectorAll(".validation-issue").length');
+
+      await page.click('[data-validation-filter="emptyContent"]');
+      await page.waitFor('document.querySelectorAll(".validation-issue").length === 1');
+      const type = await page.evaluate('document.querySelector(".validation-issue-type").textContent');
+      assert.equal(type, "Empty content");
+
+      await page.click("[data-validation-all]");
+      await page.waitFor(`document.querySelectorAll(".validation-issue").length === ${total}`);
+      await page.click("#validation-close");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "checks project data integrity",
+    async run(page) {
+      await resetApp(page);
+      await page.evaluate('document.querySelector("#about-btn").click(); true');
+      await page.waitFor('document.querySelector("#about-dialog")?.open');
+      await page.click("#about-integrity-btn");
+      await page.waitFor('document.querySelector("#integrity-dialog")?.open');
+      await page.waitFor('document.querySelector("#integrity-summary").textContent.includes("No integrity issues")');
+
+      const disabled = await page.evaluate('document.querySelector("#integrity-repair").disabled');
+      assert.equal(disabled, true);
+
+      await page.click("#integrity-close");
+      await page.waitFor('!document.querySelector("#integrity-dialog")?.open');
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "opens and runs commands from the command palette",
     async run(page) {
       await resetApp(page);

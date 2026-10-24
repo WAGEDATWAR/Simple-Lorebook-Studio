@@ -39,11 +39,13 @@ const {
   BACKUP_KEY,
   REVISION_KEY_PREFIX,
   getProjectBackupInfo,
+  getRevisionIntegrity,
   getRevisions,
   getStorageUsage,
   loadProject,
   loadProjectBackup,
   loadRevision,
+  repairRevisions,
   saveProject,
   saveProjectBackup,
   saveProjectDetailed,
@@ -192,6 +194,26 @@ test("keeps only the newest revisions", async () => {
   assert.equal(history[0].reason, "Snapshot 13");
   assert.equal(localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions[0].revision.id}`), null);
   assert.notEqual(localStorage.getItem(`${REVISION_KEY_PREFIX}${revisions[2].revision.id}`), null);
+});
+
+test("detects and repairs missing revision payloads", async () => {
+  memory.clear();
+  const state = createState("Integrity Book", "Entry");
+  const first = await saveRevision(state, "First");
+
+  assert.equal(first.ok, true);
+  memory.delete(`${REVISION_KEY_PREFIX}${first.revision.id}`);
+
+  const report = await getRevisionIntegrity();
+
+  assert.deepEqual(report.missingPayloads, [first.revision.id]);
+  assert.deepEqual(report.orphanedPayloads, []);
+
+  await repairRevisions();
+
+  const after = await getRevisionIntegrity();
+  assert.deepEqual(after.missingPayloads, []);
+  assert.deepEqual((await getRevisions()).revisions, []);
 });
 
 test("reports unreadable revisions", async () => {

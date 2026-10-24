@@ -4,6 +4,13 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-22
+
+### Added
+
+- Clickable validation category counts that filter the issue list by type.
+- A data-integrity check and repair tool for duplicate IDs, duplicate source UIDs, dangling references, and missing or orphaned snapshot data.
+
 ## [0.7.1] - 2026-10-22
 
 ### Added
