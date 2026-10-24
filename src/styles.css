@@ -1760,6 +1760,20 @@ body.is-resizing-sidebar {
   outline: none;
 }
 
+.book-budget-status {
+  color: var(--faint);
+  font-size: 10.5px;
+}
+
+.book-budget-status.is-over {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+#overview-budget.is-over {
+  color: var(--warning);
+}
+
 .tag-chips .key-chip {
   color: var(--success);
   background: rgba(126, 226, 184, 0.08);

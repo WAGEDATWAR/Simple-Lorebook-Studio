@@ -5,10 +5,13 @@ const numberFormatter = new Intl.NumberFormat("en-US");
 
 export function syncEntryStats(refs, content) {
   const { chars, words, tokens } = getTextStats(content);
+  const measured = refs.tokenCount ? refs.tokenCount(content) : null;
 
   refs.entryStatChars.textContent = numberFormatter.format(chars);
   refs.entryStatWords.textContent = numberFormatter.format(words);
-  refs.entryStatTokens.textContent = `~${numberFormatter.format(tokens)}`;
+  refs.entryStatTokens.textContent = Number.isFinite(measured)
+    ? numberFormatter.format(measured)
+    : `~${numberFormatter.format(tokens)}`;
 }
 
 export function renderEditor(refs) {
@@ -44,5 +47,6 @@ export function renderEditor(refs) {
   refs.entryCaseSensitive.checked = entry.caseSensitive;
   refs.entryWholeWords.checked = entry.matchWholeWords;
 
+  refs.requestTokens?.(entry.content);
   syncEntryStats(refs, entry.content);
 }

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d12">
-  <meta name="app-version" content="0.6.1">
+  <meta name="app-version" content="0.6.2">
   <meta name="description" content="A local-first editor for lorebooks used in LLM roleplay frontends.">
   <title>Lorebook Studio</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
@@ -174,6 +174,11 @@
                 <div id="book-tags" class="key-chips tag-chips">
                   <input id="book-tags-input" class="key-chips-input" type="text" placeholder="campaign, v2" autocomplete="off" spellcheck="false">
                 </div>
+              </div>
+              <div class="field">
+                <label for="book-token-budget">Token budget <span class="hint">0 = off</span></label>
+                <input id="book-token-budget" class="book-budget-input" type="number" min="0" max="10000000" step="100" value="0" inputmode="numeric">
+                <span id="book-budget-status" class="book-budget-status" aria-live="polite">Enabled: ~0 tokens</span>
               </div>
               <div class="book-meta-actions">
                 <button id="overview-btn" class="meta-btn overview-btn" type="button" aria-label="Lorebook overview" title="Lorebook overview">
@@ -567,6 +572,10 @@
         <div>
           <dt>Average size</dt>
           <dd id="overview-average">~0 tokens</dd>
+        </div>
+        <div>
+          <dt>Token budget</dt>
+          <dd id="overview-budget">Off</dd>
         </div>
       </dl>
       <p id="overview-longest" class="overview-longest"></p>

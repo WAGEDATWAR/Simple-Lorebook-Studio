@@ -593,6 +593,39 @@ export const scenarios = [
     }
   },
   {
+    name: "shows real token counts from the worker",
+    async run(page) {
+      await resetApp(page);
+      await page.waitFor('!document.querySelector("#entry-stat-tokens").textContent.startsWith("~")');
+      const tokens = await page.evaluate('document.querySelector("#entry-stat-tokens").textContent');
+      assert.match(tokens, /^\d[\d,]*$/);
+
+      await page.click("#overview-btn");
+      await page.waitFor('document.querySelector("#overview-dialog")?.open');
+      await page.waitFor('!document.querySelector("#overview-tokens").textContent.startsWith("~")');
+      await page.click("#overview-close");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
+    name: "warns when a book exceeds its token budget",
+    async run(page) {
+      await resetApp(page);
+      await setValue(page, "#book-token-budget", "10");
+      await page.waitFor('document.querySelector("#book-budget-status")?.classList.contains("is-over")');
+      const status = await page.evaluate('document.querySelector("#book-budget-status").textContent');
+      assert.match(status, /Over budget/);
+
+      await page.click("#overview-btn");
+      await page.waitFor('document.querySelector("#overview-dialog")?.open');
+      await page.waitFor('document.querySelector("#overview-budget")?.classList.contains("is-over")');
+      const budget = await page.evaluate('document.querySelector("#overview-budget").textContent');
+      assert.match(budget, /over/);
+      await page.click("#overview-close");
+      assert.deepEqual(page.errors, []);
+    }
+  },
+  {
     name: "opens and runs commands from the command palette",
     async run(page) {
       await resetApp(page);

@@ -78,6 +78,7 @@ export function createBook(patch = {}) {
     name: typeof patch.name === "string" ? patch.name : "Untitled Lorebook",
     description: typeof patch.description === "string" ? patch.description : "",
     tags: normalizeTagList(patch.tags),
+    tokenBudget: Number.isFinite(patch.tokenBudget) ? clamp(Math.round(patch.tokenBudget), 0, 10_000_000) : 0,
     entries: Array.isArray(patch.entries) ? patch.entries.map((entry) => createEntry(entry)) : [],
     createdAt: Number.isFinite(patch.createdAt) ? patch.createdAt : now,
     updatedAt: Number.isFinite(patch.updatedAt) ? patch.updatedAt : now,

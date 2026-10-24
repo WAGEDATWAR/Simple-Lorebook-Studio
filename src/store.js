@@ -447,6 +447,25 @@ export function updateActiveBookTags(tags) {
   return book;
 }
 
+export function updateActiveBookTokenBudget(value) {
+  const book = getActiveBook();
+
+  if (!book) {
+    return null;
+  }
+
+  const next = clamp(Math.round(Number(value) || 0), 0, 10_000_000);
+
+  if (book.tokenBudget === next) {
+    return book;
+  }
+
+  captureHistory(`edit-book-budget:${book.id}`);
+  book.tokenBudget = next;
+  book.updatedAt = Date.now();
+  return book;
+}
+
 export function deleteBook(id = state.activeBookId) {
   const index = state.books.findIndex((book) => book.id === id);
 

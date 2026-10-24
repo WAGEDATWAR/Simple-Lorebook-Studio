@@ -31,6 +31,7 @@ import {
   undo,
   updateActiveBookDescription,
   updateActiveBookTags,
+  updateActiveBookTokenBudget,
   updateActiveEntry
 } from "../src/store.js";
 import { sortEntries } from "../src/ui/sidebar.js";
@@ -218,6 +219,19 @@ test("updates book tags and tag filters", () => {
 
   setTagFilters(["npc", "npc", "vip"]);
   assert.deepEqual(getTagFilters(), ["npc", "vip"]);
+});
+
+test("updates the active book token budget", () => {
+  initStore(createTestProject());
+
+  updateActiveBookTokenBudget(500);
+  assert.equal(getActiveBook().tokenBudget, 500);
+
+  updateActiveBookTokenBudget(-10);
+  assert.equal(getActiveBook().tokenBudget, 0);
+
+  updateActiveBookTokenBudget("250");
+  assert.equal(getActiveBook().tokenBudget, 250);
 });
 
 test("toggles entry filters with mutually exclusive status", () => {

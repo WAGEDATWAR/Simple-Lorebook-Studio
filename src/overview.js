@@ -1,13 +1,15 @@
 import { getTextStats } from "./utils.js";
 
-function summarize(entries) {
+function summarize(entries, tokenCount = null) {
   return entries.reduce((totals, entry) => {
     const stats = getTextStats(entry.content);
+    const measured = tokenCount ? tokenCount(entry.content) : null;
+    const tokens = Number.isFinite(measured) ? measured : stats.tokens;
 
     return {
       chars: totals.chars + stats.chars,
       words: totals.words + stats.words,
-      tokens: totals.tokens + stats.tokens
+      tokens: totals.tokens + tokens
     };
   }, { chars: 0, words: 0, tokens: 0 });
 }
@@ -16,7 +18,7 @@ function normalizeKey(key) {
   return key.trim().toLocaleLowerCase();
 }
 
-export function buildBookOverview(book) {
+export function buildBookOverview(book, tokenCount = null) {
   const entries = book?.entries ?? [];
   const enabledEntries = entries.filter((entry) => entry.enabled);
   const keyOwners = new Map();
@@ -60,13 +62,14 @@ export function buildBookOverview(book) {
       longestEntry = {
         id: entry.id,
         title: entry.title.trim() || "Untitled entry",
-        chars: entry.content.length
+        chars: entry.content.length,
+        content: entry.content
       };
     }
   }
 
-  const totals = summarize(entries);
-  const enabledTotals = summarize(enabledEntries);
+  const totals = summarize(entries, tokenCount);
+  const enabledTotals = summarize(enabledEntries, tokenCount);
   const uniqueKeys = keyOwners.size;
   const sharedKeys = [...keyOwners.values()].filter((owners) => owners.size > 1).length;
 
@@ -84,8 +87,13 @@ export function buildBookOverview(book) {
     enabledTotals,
     averageTokens: entries.length ? Math.round(totals.tokens / entries.length) : 0,
     longestEntry: longestEntry && longestEntry.chars ? {
-      ...longestEntry,
-      tokens: Math.ceil(longestEntry.chars / 4)
+      id: longestEntry.id,
+      title: longestEntry.title,
+      chars: longestEntry.chars,
+      tokens: (() => {
+        const measured = tokenCount ? tokenCount(longestEntry.content) : null;
+        return Number.isFinite(measured) ? measured : Math.ceil(longestEntry.chars / 4);
+      })()
     } : null
   };
 }

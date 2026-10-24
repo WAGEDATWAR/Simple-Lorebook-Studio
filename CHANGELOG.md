@@ -4,6 +4,13 @@ All notable changes to Lorebook Studio are documented here. The format is based 
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-22
+
+### Added
+
+- Real cl100k_base tokenizer running in a web worker, replacing the `chars / 4` estimate for entry, book, and overview token counts, with an estimate fallback before the worker is ready.
+- A per-book token budget with over-budget warnings in the lorebook-information section and the overview.
+
 ## [0.6.1] - 2026-10-22
 
 ### Added

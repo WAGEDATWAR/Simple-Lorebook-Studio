@@ -27,7 +27,6 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 ## Next Up
 
 - [ ] [P1] [High] Add a performance benchmark for large books and virtualization if needed.
-- [ ] [P1] [Very High] Replace the character/4 estimate with a real tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
 - [ ] [P1] [High] Add a context simulation view showing likely activation order and injected text.
 
 ## Editor and Authoring
@@ -98,6 +97,7 @@ Effort: `[Low]`, `[Medium]`, `[High]`, `[Very High]` (rough implementation size)
 ## Context and Token Tools
 
 - [x] [P1] [Medium] Show token counts per entry, per enabled set, and per book.
+- [x] [P1] [Very High] Replace the character/4 estimate with a real cl100k tokenizer running in a worker, and add a token budget field with warnings when a book exceeds it.
 - [x] [P1] [Medium] Add key collision and unreachable-entry detection.
 - [ ] [P2] [Medium] Add configurable model/tokenizer presets.
 - [ ] [P2] [Medium] Add context window presets for common frontend configurations.

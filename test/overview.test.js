@@ -41,6 +41,28 @@ test("summarizes entries, tokens, and key coverage", () => {
   });
 });
 
+test("uses a supplied token counter when available", () => {
+  const book = createBook([
+    { id: "entry_one", title: "One", content: "12345678", keys: ["one"] },
+    { id: "entry_two", title: "Two", content: "1234", keys: ["two"], enabled: false }
+  ]);
+  const overview = buildBookOverview(book, () => 10);
+
+  assert.deepEqual(overview.totals, { chars: 12, words: 2, tokens: 20 });
+  assert.deepEqual(overview.enabledTotals, { chars: 8, words: 1, tokens: 10 });
+  assert.equal(overview.averageTokens, 10);
+  assert.equal(overview.longestEntry.tokens, 10);
+});
+
+test("falls back to the estimate when the token counter returns null", () => {
+  const book = createBook([
+    { id: "entry_one", title: "One", content: "12345678", keys: ["one"] }
+  ]);
+  const overview = buildBookOverview(book, () => null);
+
+  assert.deepEqual(overview.totals, { chars: 8, words: 1, tokens: 2 });
+});
+
 test("returns zeroed metrics for an empty book", () => {
   const overview = buildBookOverview(createBook([]));
 

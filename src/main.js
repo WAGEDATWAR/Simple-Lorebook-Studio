@@ -43,6 +43,7 @@ import {
   undo,
   updateActiveBookDescription,
   updateActiveBookTags,
+  updateActiveBookTokenBudget,
   updateActiveEntry
 } from "./store.js";
 import {
@@ -61,6 +62,7 @@ import { diffProjects } from "./diff.js";
 import { MAX_IMPORT_BYTES } from "./limits.js";
 import { IMPORT_STRATEGIES, mergeProject } from "./merge.js";
 import { normalizeTagList } from "./schema.js";
+import { createTokenizer, estimateTokens } from "./tokenizer/client.js";
 import { buildBookOverview } from "./overview.js";
 import { ENTRY_TEMPLATES, buildTemplatePatch, getEntryTemplate } from "./templates.js";
 import { showDiffDialog } from "./ui/diff.js";
@@ -83,6 +85,8 @@ const refs = {
   bookDescriptionPreview: document.querySelector("#book-description-preview"),
   bookTagsContainer: document.querySelector("#book-tags"),
   bookTagsInput: document.querySelector("#book-tags-input"),
+  bookTokenBudget: document.querySelector("#book-token-budget"),
+  bookBudgetStatus: document.querySelector("#book-budget-status"),
   saveState: document.querySelector("#save-state"),
   storageBanner: document.querySelector("#storage-banner"),
   storageBannerMessage: document.querySelector("#storage-banner-message"),
@@ -150,6 +154,7 @@ const refs = {
   overviewMissingKeys: document.querySelector("#overview-missing-keys"),
   overviewSharedKeys: document.querySelector("#overview-shared-keys"),
   overviewAverage: document.querySelector("#overview-average"),
+  overviewBudget: document.querySelector("#overview-budget"),
   overviewLongest: document.querySelector("#overview-longest"),
   overviewCloseBtn: document.querySelector("#overview-close"),
   validationBtn: document.querySelector("#validation-btn"),
@@ -252,6 +257,11 @@ refs.bookTagChips = createKeyChips({
     scheduleSave();
   }
 });
+
+const tokenizer = createTokenizer({ onUpdate: handleTokenUpdate });
+
+refs.tokenCount = (text) => tokenizer.count(text);
+refs.requestTokens = (text) => tokenizer.request(text);
 
 let saveTimer = 0;
 let saveFailed = false;
@@ -878,7 +888,62 @@ function renderAll() {
   renderEditor(refs);
   updateHistoryButtons();
   updateValidationIndicator();
+  updateBudgetStatus();
   updateDocumentTitle();
+}
+
+function updateBudgetStatus() {
+  const book = getActiveBook();
+  const budget = Number.isFinite(book?.tokenBudget) ? book.tokenBudget : 0;
+  const entries = book?.entries ?? [];
+  const ready = tokenizer.isReady();
+  const prefix = ready ? "" : "~";
+  let enabledTokens = 0;
+
+  for (const entry of entries) {
+    if (!entry.enabled) {
+      continue;
+    }
+
+    const measured = tokenizer.count(entry.content);
+    enabledTokens += Number.isFinite(measured) ? measured : estimateTokens(entry.content);
+  }
+
+  refs.bookTokenBudget.value = String(budget);
+
+  if (budget > 0) {
+    const over = enabledTokens > budget;
+
+    refs.bookBudgetStatus.textContent = over
+      ? `Over budget by ${numberFormatter.format(enabledTokens - budget)} tokens (${prefix}${numberFormatter.format(enabledTokens)} / ${numberFormatter.format(budget)})`
+      : `${prefix}${numberFormatter.format(enabledTokens)} of ${numberFormatter.format(budget)} tokens`;
+    refs.bookBudgetStatus.classList.toggle("is-over", over);
+
+    for (const entry of entries) {
+      if (entry.enabled) {
+        tokenizer.request(entry.content);
+      }
+    }
+
+    return;
+  }
+
+  refs.bookBudgetStatus.classList.remove("is-over");
+  refs.bookBudgetStatus.textContent = `${prefix}${numberFormatter.format(enabledTokens)} enabled tokens`;
+}
+
+function handleTokenUpdate() {
+  const entry = getActiveEntry();
+
+  if (entry) {
+    syncEntryStats(refs, entry.content);
+  }
+
+  updateBudgetStatus();
+
+  if (refs.overviewDialog.open) {
+    renderOverviewDialog();
+  }
 }
 
 function scheduleSave() {
@@ -971,7 +1036,16 @@ function openValidationDialog() {
 
 function renderOverviewDialog() {
   const book = getActiveBook();
-  const overview = buildBookOverview(book);
+
+  if (book) {
+    for (const entry of book.entries) {
+      tokenizer.request(entry.content);
+    }
+  }
+
+  const ready = tokenizer.isReady();
+  const prefix = ready ? "" : "~";
+  const overview = buildBookOverview(book, (text) => tokenizer.count(text));
   const percent = Math.round(overview.coverage * 100);
   const bookName = book?.name?.trim() || "this lorebook";
 
@@ -980,8 +1054,8 @@ function renderOverviewDialog() {
     : "This lorebook has no entries yet.";
   refs.overviewEntries.textContent = numberFormatter.format(overview.entries);
   refs.overviewEnabled.textContent = numberFormatter.format(overview.enabled);
-  refs.overviewTokens.textContent = `~${numberFormatter.format(overview.totals.tokens)}`;
-  refs.overviewEnabledTokens.textContent = `~${numberFormatter.format(overview.enabledTotals.tokens)}`;
+  refs.overviewTokens.textContent = `${prefix}${numberFormatter.format(overview.totals.tokens)}`;
+  refs.overviewEnabledTokens.textContent = `${prefix}${numberFormatter.format(overview.enabledTotals.tokens)}`;
   refs.overviewKeys.textContent = numberFormatter.format(overview.uniqueKeys);
   refs.overviewCoverage.textContent = `${percent}%`;
   refs.overviewMeterBar.style.width = `${percent}%`;
@@ -989,7 +1063,19 @@ function renderOverviewDialog() {
   refs.overviewAlwaysOn.textContent = numberFormatter.format(overview.alwaysOn);
   refs.overviewMissingKeys.textContent = numberFormatter.format(overview.missingKeys);
   refs.overviewSharedKeys.textContent = numberFormatter.format(overview.sharedKeys);
-  refs.overviewAverage.textContent = `~${numberFormatter.format(overview.averageTokens)} tokens`;
+  refs.overviewAverage.textContent = `${prefix}${numberFormatter.format(overview.averageTokens)} tokens`;
+
+  const budget = Number.isFinite(book?.tokenBudget) ? book.tokenBudget : 0;
+
+  if (budget > 0) {
+    const over = overview.enabledTotals.tokens > budget;
+    refs.overviewBudget.textContent = `${prefix}${numberFormatter.format(overview.enabledTotals.tokens)} of ${numberFormatter.format(budget)}${over ? " (over)" : ""}`;
+    refs.overviewBudget.classList.toggle("is-over", over);
+  } else {
+    refs.overviewBudget.textContent = "Off";
+    refs.overviewBudget.classList.remove("is-over");
+  }
+
   refs.overviewLongest.replaceChildren();
 
   if (overview.longestEntry) {
@@ -998,7 +1084,7 @@ function renderOverviewDialog() {
     refs.overviewLongest.append(
       document.createTextNode("Longest entry: "),
       name,
-      document.createTextNode(` (~${numberFormatter.format(overview.longestEntry.tokens)} tokens)`)
+      document.createTextNode(` (${prefix}${numberFormatter.format(overview.longestEntry.tokens)} tokens)`)
     );
   }
 }
@@ -2025,6 +2111,16 @@ refs.bookDescription.addEventListener("input", (event) => {
   scheduleSave();
 });
 
+refs.bookTokenBudget.addEventListener("input", (event) => {
+  updateActiveBookTokenBudget(event.target.value);
+  updateBudgetStatus();
+  scheduleSave();
+});
+
+refs.bookTokenBudget.addEventListener("blur", () => {
+  refs.bookTokenBudget.value = String(getActiveBook()?.tokenBudget ?? 0);
+});
+
 refs.entrySearch.addEventListener("input", (event) => {
   setSearchQuery(event.target.value);
   renderSidebar(refs);
@@ -2761,6 +2857,7 @@ if (initialTagFilters) {
   setTagFilters(initialTagFilters);
 }
 
+tokenizer.start();
 renderAll();
 
 const storedSidebarWidth = readSidebarWidth();

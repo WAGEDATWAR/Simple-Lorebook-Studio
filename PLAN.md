@@ -43,8 +43,9 @@ The current build is a working multi-book editor with frontend-targeted exchange
 - Trigger and secondary keys are edited as chips: add with Enter/comma, paste comma- or newline-separated lists, remove with the chip button or Backspace, and double-click a chip to edit it.
 - Slash-delimited keys are treated as regular expressions, highlighted in the editor, and validated with a plain-text fallback when the pattern is invalid.
 - Bulk insertion-order controls set or shift the order of selected entries.
-- Live character, word, and approximate token counts.
-- A book overview with entry counts, approximate total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, and the longest entry.
+- Live character, word, and token counts. Token counts use a real cl100k_base BPE tokenizer running in a web worker, with the `chars / 4` estimate shown (prefixed with `~`) until the worker is ready or when it is unavailable.
+- A per-book token budget with an over-budget warning in the lorebook-information section and the overview.
+- A book overview with entry counts, total and enabled tokens, unique and shared key counts, key coverage, missing keys, average size, the longest entry, and budget usage.
 - Debounced IndexedDB autosave with a save-state indicator, visibility flush, and a localStorage fallback when IndexedDB is unavailable.
 - One-time migration of existing localStorage projects, backups, and snapshots into IndexedDB.
 - Native project JSON import and full-project backup export.
@@ -112,6 +113,10 @@ The current build is a working multi-book editor with frontend-targeted exchange
 | `src/templates.js` | Built-in entry templates and patch builders |
 | `src/keys.js` | Regex-key detection and parsing with plain-text fallback |
 | `src/commands.js` | Pure command-palette filtering |
+| `src/tokenizer/bpe.js` | Pure cl100k_base BPE encoder |
+| `src/tokenizer/worker.js` | Tokenizer web worker that loads ranks and counts text |
+| `src/tokenizer/client.js` | Main-thread worker client with an estimate fallback |
+| `src/tokenizer/data/` | Vendored cl100k_base ranks with source attribution |
 | `src/ui/commandPalette.js` | Command palette dialog controller |
 | `src/format.js` | Import entry point, project backup serialization, export registry, download helper |
 | `src/formats/` | Detection, normalization, serialization, capabilities, and Chub, SillyTavern, native, and character-book adapters |
@@ -469,8 +474,8 @@ Current checks:
 - `npm run check` validates every JavaScript module under `src/`, `test/`, and `scripts/` syntactically.
 - `npm run lint` enforces whitespace, indentation, and small code-quality rules with a dependency-free linter.
 - `npm run format` reports whitespace issues; `npm run format:write` fixes them.
-- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 83 tests.
-- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
+- `npm test` covers Chub, SillyTavern, character-book import and export, native and frontend fixture round-trips, capabilities, unsupported files, import limits, project persistence, storage quota failures, storage usage reporting, pre-import backup/restore, import merge strategies, revision snapshots, history, diff calculation and line rendering, regex keys, tags, command filtering, tokenizer accuracy against `gpt-tokenizer`, description edits, duplication, selection, bulk actions, bulk insertion order, reordering, sorting, entry filters, tag filters, overview metrics, templates, schema normalization, and validation. The suite currently passes 90 tests.
+- `npm run test:e2e` launches headless Chrome through the DevTools Protocol and runs committed scenarios for boot, CRUD, search and match highlighting, entry filters, tag editing and filtering, pinned current entries, key-chip editing, bulk insertion order, keyboard navigation and focus restoration, real token counts and token-budget warnings, command palette, About and guide dialogs, IndexedDB storage and localStorage migration, UI-preference persistence, storage usage reporting, character-book export, backup reminders, storage-failure recovery, import strategies, revision comparison, and responsive layout.
 - `npm run a11y` injects axe-core into headless Chrome and audits the workspace plus every dialog, failing on critical or serious violations.
 - `npm run release:check` verifies that `package.json`, the `index.html` app-version meta, `CHANGELOG.md`, and the tag on `HEAD` agree.
 - GitHub Actions runs syntax checks, lint, format checks, unit tests, and end-to-end tests on pushes to `main` and pull requests.
@@ -500,7 +505,8 @@ Planned checks:
 - Pre-import backups use the same native project container and remain restorable from the export dialog.
 - Revision history stores up to 12 local project snapshots within a total size budget, with deduplication by content signature. Restoring snapshots the current state first.
 - IndexedDB is the primary persistence layer; localStorage remains a fallback and migration source. Storage access is async, with a serialized write queue to avoid index races.
-- The app ships with no runtime dependencies. `axe-core` is the only dev dependency, used by the committed accessibility audit.
+- The app ships with no runtime dependencies. Dev dependencies are `axe-core` (accessibility audit) and `gpt-tokenizer` (tokenizer accuracy tests).
+- Token counts use a vendored cl100k_base BPE encoder (`src/tokenizer/bpe.js`) with the ranks loaded once in a web worker. The encoder is validated against `gpt-tokenizer` in tests, and the `chars / 4` estimate remains the fallback before the worker is ready or when workers are unavailable.
 - Autosave with explicit status, not manual-save-only.
 
 ### Risks
@@ -512,7 +518,7 @@ Planned checks:
 | Browser storage quota | Failed saves with large books | IndexedDB primary storage, save-state error, export backups, storage usage reporting |
 | File System Access is Chrome-only | Open/Save unavailable elsewhere | Feature-detect and hide controls; Import/Export remain the fallback |
 | Destructive import | Data loss | Confirmation, preview phase, automatic pre-import backup |
-| Approximate tokens mislead authors | Budget errors | Label as approximate; implement real tokenizer |
+| Token counts mislead authors | Budget errors | Real cl100k tokenizer validated against `gpt-tokenizer`; estimates prefixed with `~` |
 | Vanilla rendering complexity | UI bugs as features grow | Targeted renders, tests, small UI modules |
 | Scope creep into a chat client | Diluted product | Keep non-goals explicit |
 
